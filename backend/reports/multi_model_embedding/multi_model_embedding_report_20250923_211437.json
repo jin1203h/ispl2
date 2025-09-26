@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "timestamp": "20250923_211437",
+    "test_type": "multi_model_embedding_analysis"
+  },
+  "security_level_tests": {
+    "public": {
+      "success": true,
+      "selected_model": "text-embedding-3-large",
+      "dimensions": 3072,
+      "table_name": "embeddings_text_embedding_3",
+      "api_type": "openai",
+      "available_models_count": 2,
+      "message": "모델 선택 성공: text-embedding-3-large"
+    },
+    "restricted": {
+      "success": true,
+      "selected_model": "text-embedding-ada-002",
+      "dimensions": 1536,
+      "table_name": "embeddings_azure_ada",
+      "api_type": "azure",
+      "available_models_count": 2,
+      "message": "모델 선택 성공: text-embedding-ada-002"
+    },
+    "closed": {
+      "success": true,
+      "selected_model": "qwen3-8b-embed",
+      "dimensions": 4096,
+      "table_name": "embeddings_qwen",
+      "api_type": "local",
+      "available_models_count": 2,
+      "message": "모델 선택 성공: qwen3-8b-embed"
+    }
+  },
+  "model_compatibility_tests": {
+    "text-embedding-3-large": {
+      "success": true,
+      "expected_dimensions": 3072,
+      "actual_dimensions": 3072,
+      "dimensions_match": true,
+      "expected_table": "embeddings_text_embedding_3",
+      "actual_table": "embeddings_text_embedding_3",
+      "table_match": true,
+      "message": "호환성 검증 완료"
+    },
+    "text-embedding-3-small": {
+      "success": true,
+      "expected_dimensions": 1536,
+      "actual_dimensions": 1536,
+      "dimensions_match": true,
+      "expected_table": "embeddings_text_embedding_small",
+      "actual_table": "embeddings_text_embedding_small",
+      "table_match": true,
+      "message": "호환성 검증 완료"
+    },
+    "qwen3-8b-embed": {
+      "success": true,
+      "expected_dimensions": 4096,
+      "actual_dimensions": 4096,
+      "dimensions_match": true,
+      "expected_table": "embeddings_qwen",
+      "actual_table": "embeddings_qwen",
+      "table_match": true,
+      "message": "호환성 검증 완료"
+    }
+  },
+  "cost_estimation_tests": {
+    "text-embedding-3-large": 0.0013,
+    "text-embedding-3-small": 0.0002,
+    "qwen3-8b-embed": 0.0
+  },
+  "overall_status": "SUCCESS",
+  "error_message": null
+}

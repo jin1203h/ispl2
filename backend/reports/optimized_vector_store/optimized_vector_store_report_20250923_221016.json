@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "test_name": "Task 4.4 Optimized Vector Store Test",
+    "timestamp": "20250923_221016",
+    "test_type": "optimized_vector_store_performance"
+  },
+  "hnsw_index_tests": {
+    "index_creation": {
+      "status": "FAILED",
+      "creation_time": 3.0996382236480713,
+      "successful_indexes": 0,
+      "total_indexes": 2,
+      "index_config": {
+        "m": 16,
+        "ef_construction": 64,
+        "ef_search": 40,
+        "distance_function": "vector_cosine_ops"
+      },
+      "summary": "인덱스 생성: 0/2 성공, 3.10초"
+    }
+  },
+  "bulk_insert_tests": {
+    "bulk_performance": {
+      "status": "FAILED",
+      "error": "모든 대량 삽입 테스트 실패"
+    }
+  },
+  "search_performance_tests": {
+    "search_speed": {
+      "status": "FAILED",
+      "avg_search_time": 1429.8336505889893,
+      "max_search_time": 2246.6702461242676,
+      "min_search_time": 667.4211025238037,
+      "target_time": 100,
+      "test_queries": 5,
+      "summary": "검색 성능: 평균 1429.8ms"
+    }
+  },
+  "optimization_analysis": {
+    "performance_analysis": {
+      "status": "ERROR",
+      "error_message": "최적화 분석 테스트 실패: 'async for' requires an object with __aiter__ method, got _AsyncGeneratorContextManager"
+    }
+  },
+  "overall_status": "COMPLETED_WITH_ISSUES",
+  "error_message": "일부 테스트 실패 (성공률: 0.0%)",
+  "performance_metrics": {
+    "index_creation_time": 3.0996382236480713,
+    "bulk_insert_throughput": 0.0,
+    "search_performance": 1429.8336505889893,
+    "memory_efficiency": 0.0
+  }
+}

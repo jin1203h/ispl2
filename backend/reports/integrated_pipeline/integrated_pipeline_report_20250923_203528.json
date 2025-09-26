@@ -1,0 +1,237 @@
+{
+  "metadata": {
+    "test_type": "integrated_pipeline_analysis",
+    "timestamp": "20250923_203528"
+  },
+  "system_info": {
+    "memory": {
+      "total_mb": 16098.86328125,
+      "available_mb": 6818.1953125,
+      "used_percent": 57.6
+    },
+    "cpu": {
+      "usage_percent": 20.2,
+      "count": 16
+    },
+    "disk": {
+      "usage_percent": 18.0
+    }
+  },
+  "pipeline_tests": {
+    "standard_pipeline": {
+      "success": true,
+      "processing_time": 602.7906363010406,
+      "stages_completed": [
+        "pdf_analysis",
+        "text_extraction",
+        "table_extraction",
+        "image_extraction",
+        "markdown_conversion"
+      ],
+      "error_message": null,
+      "performance_metrics": {
+        "total_duration": 0.03392672538757324,
+        "peak_memory_mb": 10907.0234375,
+        "avg_cpu_usage": 0.0,
+        "success_rate": 100.0,
+        "stages_completed": 5,
+        "stage_details": {
+          "pdf_analysis": {
+            "success": true,
+            "duration": 0.004945993423461914,
+            "memory_usage": {
+              "start": 9293.74609375,
+              "peak": 9293.74609375,
+              "end": 9293.80078125
+            },
+            "cpu_usage": 0.0
+          },
+          "text_extraction": {
+            "success": true,
+            "duration": 0.009087324142456055,
+            "memory_usage": {
+              "start": 9318.72265625,
+              "peak": 9318.72265625,
+              "end": 9319.40234375
+            },
+            "cpu_usage": 0.0
+          },
+          "table_extraction": {
+            "success": true,
+            "duration": 0.006012916564941406,
+            "memory_usage": {
+              "start": 10906.94921875,
+              "peak": 10907.0234375,
+              "end": 10907.03515625
+            },
+            "cpu_usage": 0.0
+          },
+          "image_extraction": {
+            "success": true,
+            "duration": 0.006554365158081055,
+            "memory_usage": {
+              "start": 9555.1171875,
+              "peak": 9555.1171875,
+              "end": 9555.09765625
+            },
+            "cpu_usage": 0.0
+          },
+          "markdown_conversion": {
+            "success": true,
+            "duration": 0.0073261260986328125,
+            "memory_usage": {
+              "start": 9572.90625,
+              "peak": 9572.90625,
+              "end": 9572.8671875
+            },
+            "cpu_usage": 0.0
+          }
+        }
+      }
+    },
+    "fast_pipeline": {
+      "success": true,
+      "processing_time": 147.66843700408936,
+      "stages_completed": [
+        "pdf_analysis",
+        "text_extraction",
+        "markdown_conversion"
+      ],
+      "error_message": null,
+      "performance_metrics": {
+        "total_duration": 0.0219113826751709,
+        "peak_memory_mb": 10780.6953125,
+        "avg_cpu_usage": 0.0,
+        "success_rate": 100.0,
+        "stages_completed": 3,
+        "stage_details": {
+          "pdf_analysis": {
+            "success": true,
+            "duration": 0.00475001335144043,
+            "memory_usage": {
+              "start": 9531.16796875,
+              "peak": 9531.72265625,
+              "end": 9531.67578125
+            },
+            "cpu_usage": 0.0
+          },
+          "text_extraction": {
+            "success": true,
+            "duration": 0.009531974792480469,
+            "memory_usage": {
+              "start": 9530.8828125,
+              "peak": 9530.88671875,
+              "end": 9530.890625
+            },
+            "cpu_usage": 0.0
+          },
+          "markdown_conversion": {
+            "success": true,
+            "duration": 0.00762939453125,
+            "memory_usage": {
+              "start": 10780.6953125,
+              "peak": 10780.6953125,
+              "end": 10780.69140625
+            },
+            "cpu_usage": 0.0
+          }
+        }
+      }
+    },
+    "parallel_pipeline": {
+      "success": true,
+      "processing_time": 627.8065755367279,
+      "stages_completed": [
+        "pdf_analysis",
+        "text_extraction",
+        "table_extraction",
+        "image_extraction",
+        "markdown_conversion"
+      ],
+      "error_message": null,
+      "performance_metrics": {
+        "total_duration": 0.038527488708496094,
+        "peak_memory_mb": 10864.41796875,
+        "avg_cpu_usage": 0.0,
+        "success_rate": 100.0,
+        "stages_completed": 5,
+        "stage_details": {
+          "pdf_analysis": {
+            "success": true,
+            "duration": 0.011562585830688477,
+            "memory_usage": {
+              "start": 10782.73828125,
+              "peak": 10783.546875,
+              "end": 10786.51953125
+            },
+            "cpu_usage": 0.0
+          },
+          "text_extraction": {
+            "success": true,
+            "duration": 0.006250858306884766,
+            "memory_usage": {
+              "start": 9775.859375,
+              "peak": 9775.859375,
+              "end": 9775.375
+            },
+            "cpu_usage": 0.0
+          },
+          "table_extraction": {
+            "success": true,
+            "duration": 0.0075643062591552734,
+            "memory_usage": {
+              "start": 10864.41796875,
+              "peak": 10864.41796875,
+              "end": 10864.41796875
+            },
+            "cpu_usage": 0.0
+          },
+          "image_extraction": {
+            "success": true,
+            "duration": 0.00656437873840332,
+            "memory_usage": {
+              "start": 10188.078125,
+              "peak": 10188.078125,
+              "end": 10188.08203125
+            },
+            "cpu_usage": 0.0
+          },
+          "markdown_conversion": {
+            "success": true,
+            "duration": 0.006585359573364258,
+            "memory_usage": {
+              "start": 9976.6953125,
+              "peak": 9976.6953125,
+              "end": 9976.6875
+            },
+            "cpu_usage": 0.0
+          }
+        }
+      }
+    },
+    "supervisor_integration": {
+      "success": false,
+      "processing_time": 1.3828277587890625e-05,
+      "stages_completed": [],
+      "error_message": "attribute name must be string, not 'PipelineMode'",
+      "performance_metrics": {}
+    }
+  },
+  "performance_analysis": {
+    "total_tests": 4,
+    "successful_tests": 3,
+    "failed_tests": 1,
+    "success_rate": 75.0,
+    "avg_processing_time": 459.42188294728595,
+    "max_processing_time": 627.8065755367279,
+    "min_processing_time": 147.66843700408936,
+    "peak_memory_mb": 10907.0234375,
+    "performance_grade": "D (개선 필요)"
+  },
+  "error_analysis": {},
+  "recommendations": [
+    "파이프라인 성공률이 낮습니다. 에러 처리 로직을 강화하세요.",
+    "평균 처리 시간이 깁니다. 병렬 처리 활성화를 고려하세요.",
+    "실패한 테스트: supervisor_integration. 해당 기능들을 점검하세요."
+  ]
+}

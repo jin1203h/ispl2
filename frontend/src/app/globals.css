@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 17 24 39;
+    --foreground: 243 244 246;
+
+    --card: 31 41 55;
+    --card-foreground: 243 244 246;
+
+    --popover: 31 41 55;
+    --popover-foreground: 243 244 246;
+
+    --primary: 59 130 246;
+    --primary-foreground: 255 255 255;
+
+    --secondary: 75 85 99;
+    --secondary-foreground: 243 244 246;
+
+    --muted: 75 85 99;
+    --muted-foreground: 156 163 175;
+
+    --accent: 75 85 99;
+    --accent-foreground: 243 244 246;
+
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+
+    --border: 75 85 99;
+    --input: 75 85 99;
+    --ring: 59 130 246;
+
+    --radius: 0.5rem;
+  }
+  
+  body {
+    @apply bg-gray-900 text-gray-100 antialiased;
+  }
+  
+  * {
+    @apply border-gray-700;
+  }
+}
+
+@layer components {
+  /* 스크롤바 스타일 */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(75 85 99) rgb(31 41 55);
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgb(31 41 55);
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(75 85 99);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(107 114 128);
+  }
+
+  /* 채팅 스크롤 */
+  .chat-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* 채팅 메시지 스타일 */
+  .chat-message {
+    @apply p-4 rounded-lg mb-4 max-w-[80%] break-words;
+  }
+
+  .chat-message.user {
+    @apply bg-blue-600 text-white ml-auto rounded-br-none;
+  }
+
+  .chat-message.assistant {
+    @apply bg-gray-800 text-gray-100 mr-auto rounded-bl-none border border-gray-700;
+  }
+
+  .chat-message.system {
+    @apply bg-yellow-900/30 text-yellow-300 text-sm italic text-center mx-auto border border-yellow-600;
+  }
+
+  /* 마크다운 스타일 (다크 테마) */
+  .markdown-content h1 {
+    @apply text-2xl font-bold mb-2 text-gray-100;
+  }
+  .markdown-content h2 {
+    @apply text-xl font-semibold mb-2 text-gray-100;
+  }
+  .markdown-content p {
+    @apply mb-2 leading-relaxed text-gray-300;
+  }
+  .markdown-content ul, .markdown-content ol {
+    @apply list-inside mb-2 pl-4 text-gray-300;
+  }
+  .markdown-content ul li {
+    @apply list-disc;
+  }
+  .markdown-content ol li {
+    @apply list-decimal;
+  }
+  .markdown-content code {
+    @apply bg-gray-700 text-gray-200 px-1 py-0.5 rounded text-sm;
+  }
+  .markdown-content pre {
+    @apply bg-gray-800 text-gray-200 p-3 rounded-md overflow-x-auto my-2 border border-gray-700;
+  }
+  .markdown-content pre code {
+    @apply bg-transparent p-0 text-gray-200;
+  }
+  .markdown-content table {
+    @apply w-full border-collapse my-4;
+  }
+  .markdown-content th, .markdown-content td {
+    @apply border border-gray-600 px-3 py-2 text-left text-gray-300;
+  }
+  .markdown-content th {
+    @apply bg-gray-800 font-semibold text-gray-100;
+  }
+  .markdown-content blockquote {
+    @apply border-l-4 border-blue-500 pl-4 italic text-gray-400 my-2;
+  }
+
+  /* 버튼 스타일 */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+
+  /* 입력 필드 스타일 */
+  .input {
+    @apply w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+  }
+
+  /* 카드 스타일 */
+  .card {
+    @apply bg-gray-800 border border-gray-700 rounded-lg;
+  }
+
+  /* 모달 오버레이 */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  }
+
+  /* 모달 콘텐츠 */
+  .modal-content {
+    @apply bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-700;
+  }
+}

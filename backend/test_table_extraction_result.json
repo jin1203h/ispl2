@@ -1,0 +1,164 @@
+{
+  "processing_time": 389.85020875930786,
+  "stats": {
+    "total_tables": 340,
+    "high_quality_tables": 298,
+    "extraction_methods": [
+      "camelot_lattice_bg_False",
+      "camelot_stream"
+    ],
+    "average_confidence": 90.22066267155365,
+    "processing_time": 389.849937915802
+  },
+  "quality_report": {
+    "extraction_summary": {
+      "total_tables": 340,
+      "high_quality_tables": 298,
+      "quality_ratio": 0.8764705882352941,
+      "average_confidence": 90.22066267155365
+    },
+    "extraction_methods": {
+      "camelot_lattice_bg_False": {
+        "count": 134,
+        "avg_confidence": 94.67054185111454
+      },
+      "camelot_stream": {
+        "count": 206,
+        "avg_confidence": 87.326081069315
+      }
+    },
+    "processing_performance": {
+      "processing_time": 389.849937915802,
+      "tables_per_second": 0.8721304454162351
+    },
+    "quality_indicators": {
+      "extraction_accuracy": 90.22066267155365,
+      "structure_consistency": 87.6470588235294,
+      "method_diversity": 2
+    },
+    "advanced_features": {
+      "advanced_service_used": true,
+      "context_analysis": true,
+      "merged_cell_detection": true,
+      "table_type_classification": true
+    }
+  },
+  "sample_tables": [
+    {
+      "table_id": "camelot_lattice_0_6_False",
+      "page_number": 6,
+      "extraction_method": "camelot_lattice_bg_False",
+      "confidence": 100.0,
+      "shape": [
+        2,
+        2
+      ],
+      "table_type": "simple_list",
+      "headers": [
+        "0",
+        "1"
+      ],
+      "sample_data": [
+        {
+          "0": null,
+          "1": null
+        },
+        {
+          "0": null,
+          "1": "이 약관은 법령 및 내부통제기준에 따른 절차를 거쳐 제공됩니다."
+        }
+      ]
+    },
+    {
+      "table_id": "camelot_lattice_4_8_False",
+      "page_number": 8,
+      "extraction_method": "camelot_lattice_bg_False",
+      "confidence": 100.0,
+      "shape": [
+        1,
+        1
+      ],
+      "table_type": "simple_list",
+      "headers": [
+        "0"
+      ],
+      "sample_data": [
+        {
+          "0": "보험약관이란?"
+        }
+      ]
+    },
+    {
+      "table_id": "camelot_lattice_5_8_False",
+      "page_number": 8,
+      "extraction_method": "camelot_lattice_bg_False",
+      "confidence": 100.0,
+      "shape": [
+        1,
+        1
+      ],
+      "table_type": "simple_list",
+      "headers": [
+        "0"
+      ],
+      "sample_data": [
+        {
+          "0": "한 눈에 보는 약관의 구성"
+        }
+      ]
+    }
+  ],
+  "sample_chunks": [
+    {
+      "text": "[표 제목] Page 6 - simple_list (2×2)\n[표 정보] 페이지: 6, 추출방법: camelot_lattice_bg_False, 신뢰도: 100.0%, 크기: 2행 × 2열\n[표 데이터]\n헤더: 0 | 1\n  행 2: 1: 이 약관은 법령 및 내부통제기준에 따른 절차를 거쳐 제공됩니다.",
+      "metadata": {
+        "chunk_index": 0,
+        "page_number": 6,
+        "chunk_type": "table_simple_list",
+        "source": "camelot_lattice_bg_False",
+        "confidence": 1.0,
+        "table_id": "camelot_lattice_0_6_False",
+        "table_shape": [
+          2,
+          2
+        ],
+        "quality_score": 64.0,
+        "table_type": "simple_list"
+      }
+    },
+    {
+      "text": "[표 제목] Page 8 - simple_list (1×1)\n[표 정보] 페이지: 8, 추출방법: camelot_lattice_bg_False, 신뢰도: 100.0%, 크기: 1행 × 1열\n[표 데이터]\n헤더: 0\n  행 1: 0: 보험약관이란?",
+      "metadata": {
+        "chunk_index": 1,
+        "page_number": 8,
+        "chunk_type": "table_simple_list",
+        "source": "camelot_lattice_bg_False",
+        "confidence": 1.0,
+        "table_id": "camelot_lattice_4_8_False",
+        "table_shape": [
+          1,
+          1
+        ],
+        "quality_score": 84.0,
+        "table_type": "simple_list"
+      }
+    },
+    {
+      "text": "[표 제목] Page 8 - simple_list (1×1)\n[표 정보] 페이지: 8, 추출방법: camelot_lattice_bg_False, 신뢰도: 100.0%, 크기: 1행 × 1열\n[표 데이터]\n헤더: 0\n  행 1: 0: 한 눈에 보는 약관의 구성",
+      "metadata": {
+        "chunk_index": 2,
+        "page_number": 8,
+        "chunk_type": "table_simple_list",
+        "source": "camelot_lattice_bg_False",
+        "confidence": 1.0,
+        "table_id": "camelot_lattice_5_8_False",
+        "table_shape": [
+          1,
+          1
+        ],
+        "quality_score": 84.0,
+        "table_type": "simple_list"
+      }
+    }
+  ]
+}

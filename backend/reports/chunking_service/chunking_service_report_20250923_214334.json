@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "timestamp": "20250923_214334",
+    "test_type": "advanced_chunking_analysis"
+  },
+  "strategy_tests": {
+    "fixed_size": {
+      "success": true,
+      "chunk_count": 7,
+      "avg_tokens": 172.0,
+      "token_range": "17-200",
+      "total_tokens": 1204,
+      "processing_time": 0.0027277469635009766,
+      "quality_score": 83.14285714285714,
+      "stats": {
+        "total_chunks": 7,
+        "avg_tokens_per_chunk": 172.0,
+        "min_tokens": 17,
+        "max_tokens": 200,
+        "total_tokens": 1204,
+        "avg_chars_per_chunk": 178.71428571428572,
+        "total_chars": 1251,
+        "strategy": "fixed_size",
+        "chunk_size_target": 200,
+        "overlap_ratio": 0.15
+      }
+    },
+    "content_aware": {
+      "success": true,
+      "chunk_count": 27,
+      "avg_tokens": 37.55555555555556,
+      "token_range": "12-111",
+      "total_tokens": 1014,
+      "processing_time": 0.002928495407104492,
+      "quality_score": 63.70370370370371,
+      "stats": {
+        "total_chunks": 27,
+        "avg_tokens_per_chunk": 37.55555555555556,
+        "min_tokens": 12,
+        "max_tokens": 111,
+        "total_tokens": 1014,
+        "avg_chars_per_chunk": 38.407407407407405,
+        "total_chars": 1037,
+        "strategy": "content_aware",
+        "chunk_size_target": 200,
+        "overlap_ratio": 0.15
+      }
+    },
+    "semantic": {
+      "success": true,
+      "chunk_count": 27,
+      "avg_tokens": 37.55555555555556,
+      "token_range": "12-111",
+      "total_tokens": 1014,
+      "processing_time": 0.0022821426391601562,
+      "quality_score": 63.70370370370371,
+      "stats": {
+        "total_chunks": 27,
+        "avg_tokens_per_chunk": 37.55555555555556,
+        "min_tokens": 12,
+        "max_tokens": 111,
+        "total_tokens": 1014,
+        "avg_chars_per_chunk": 38.407407407407405,
+        "total_chars": 1037,
+        "strategy": "semantic",
+        "chunk_size_target": 200,
+        "overlap_ratio": 0.15
+      }
+    }
+  },
+  "performance_comparison": {
+    "processing_times": {
+      "fixed_size": 0.0027277469635009766,
+      "content_aware": 0.002928495407104492,
+      "semantic": 0.0022821426391601562
+    },
+    "fastest_strategy": "semantic",
+    "slowest_strategy": "content_aware"
+  },
+  "quality_metrics": {
+    "average_quality_score": 70.18342151675485,
+    "fastest_processing_time": 0.0022821426391601562,
+    "boundary_preservation": true,
+    "token_accuracy": true,
+    "strategies_tested": 3
+  },
+  "overall_status": "SUCCESS",
+  "error_message": null
+}

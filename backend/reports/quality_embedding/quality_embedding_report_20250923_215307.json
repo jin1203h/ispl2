@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "test_name": "Task 4.3 Quality Embedding Test",
+    "timestamp": "20250923_215307",
+    "test_type": "quality_embedding_validation"
+  },
+  "quality_validation_tests": {
+    "validator_accuracy": {
+      "status": "PASSED",
+      "total_embeddings": 5,
+      "average_quality": 63.0,
+      "nan_detection": true,
+      "zero_variance_detection": true,
+      "summary": "검증기가 문제를 정확히 감지: NaN=True, ZeroVar=True"
+    }
+  },
+  "batch_optimization_tests": {
+    "adaptive_sizing": {
+      "status": "PASSED",
+      "initial_batch_size": 100,
+      "low_success_result": 70,
+      "slow_response_result": 80,
+      "good_performance_result": 60,
+      "optimization_suggestion": "API 호출 성공률이 낮습니다. 배치 크기를 줄이거나 재시도 로직을 강화하세요. 응답 시간이 깁니다. 배치 크기를 줄이거나 병렬 처리를 고려하세요.",
+      "summary": "배치 크기 적응: 감소=True, 증가=True"
+    }
+  },
+  "api_usage_monitoring": {
+    "usage_tracking": {
+      "status": "PASSED",
+      "requests_per_minute": 20,
+      "tokens_per_minute": 39000,
+      "daily_cost": 0.12167999999999998,
+      "monthly_cost_estimate": 3.6503999999999994,
+      "approaching_rate_limit": false,
+      "warning_message": null,
+      "summary": "모니터링 정상 작동: True"
+    }
+  },
+  "integration_tests": {
+    "quality_agent": {
+      "status": "FAILED",
+      "processed_chunks": 5,
+      "generated_embeddings": 0,
+      "processing_time": 0.0014421939849853516,
+      "average_quality_score": 0.0,
+      "quality_reports_count": 0,
+      "processing_status": null,
+      "summary": "통합 테스트 실패: 0/5 임베딩 생성"
+    }
+  },
+  "overall_status": "COMPLETED_WITH_ISSUES",
+  "error_message": "일부 테스트 실패 (성공률: 75.0%)",
+  "quality_metrics": {
+    "average_embedding_quality": 85.0,
+    "api_success_rate": 75.0,
+    "batch_optimization_efficiency": 75.0
+  }
+}

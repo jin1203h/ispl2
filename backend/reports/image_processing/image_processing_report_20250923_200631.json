@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "test_file": "uploads/pdf/test_policy.pdf",
+    "timestamp": "20250923_200631",
+    "test_type": "image_processing_analysis"
+  },
+  "pdf_info": {
+    "file_exists": true,
+    "file_size": "7,082,339 bytes (6.8 MB)"
+  },
+  "processing_results": {
+    "status": "completed",
+    "processing_time": 54.947303771972656,
+    "total_images": 70,
+    "successful_ocr": 50,
+    "high_quality_images": 24,
+    "text_regions_found": 700,
+    "ocr_success_rate": 0.7142857142857143,
+    "chunks_generated": 50
+  },
+  "quality_analysis": {
+    "excellent": 2,
+    "fair": 28,
+    "poor": 18,
+    "good": 22
+  },
+  "verification_results": {
+    "이미지 추출 완성도": {
+      "score": 100.0,
+      "passed": true,
+      "detail": "70/70 추출"
+    },
+    "이미지 OCR 정확도": {
+      "score": 71.42857142857143,
+      "passed": true,
+      "detail": "50/70 OCR 성공 (메타데이터: 70)"
+    },
+    "메타데이터 보존 정확도": {
+      "score": 100.0,
+      "passed": true,
+      "detail": "70/70 메타데이터 보존"
+    },
+    "이미지-텍스트 연결 식별": {
+      "score": 100.0,
+      "passed": true,
+      "detail": "70/70 맥락 힌트 생성"
+    }
+  },
+  "image_type_analysis": {
+    "text_document": 2,
+    "table": 8,
+    "mixed": 36,
+    "logo_icon": 22,
+    "chart_graph": 2
+  }
+}

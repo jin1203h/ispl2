@@ -1,0 +1,24 @@
+# 환경변수
+.env
+.env.local
+env.example
+secrets/
+
+# Node.js
+node_modules/
+
+# Next.js build output folder
+.next/
+
+# Pythone
+__pycache__/
+
+# 빌드
+build/
+dist/
+
+# VSCode
+.vscode/
+
+# Logs
+*.log

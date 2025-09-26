@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "test_file": "uploads/pdf/test_policy.pdf",
+    "timestamp": "20250923_230027",
+    "test_type": "markdown_conversion_analysis"
+  },
+  "pdf_info": {
+    "total_pages": 10,
+    "file_size": "6.75 MB",
+    "file_exists": true
+  },
+  "conversion_stats": {
+    "total_chunks_converted": 6,
+    "markdown_length": 999,
+    "extracted_images_count": 1,
+    "processing_time": 0.15985608100891113,
+    "structure_preservation_rate": 100.0,
+    "readability_score": "불량",
+    "metadata_completeness": 100.0
+  },
+  "quality_validation": {
+    "overall_passed": false,
+    "detailed_results": {
+      "structure_preservation": {
+        "score": 100.0,
+        "passed": true,
+        "threshold": 90.0,
+        "description": "문서 구조 보존 정확도"
+      },
+      "syntax_compliance": {
+        "score": 100,
+        "passed": true,
+        "threshold": 100,
+        "description": "Markdown 문법 준수"
+      },
+      "readability": {
+        "score": "불량",
+        "passed": false,
+        "threshold": "양호 이상",
+        "description": "가독성 평가"
+      },
+      "metadata_completeness": {
+        "score": 100.0,
+        "passed": true,
+        "threshold": 95.0,
+        "description": "메타데이터 완성도"
+      }
+    },
+    "score": 75.0,
+    "issues": [
+      "가독성 평가 기준 미달: 불량"
+    ]
+  },
+  "output_files": {
+    "markdown_file": "outputs\\markdown\\test_policy_converted.md",
+    "markdown_length": 999,
+    "extracted_images": 1
+  },
+  "overall_status": "completed",
+  "error_message": null
+}
