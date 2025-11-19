@@ -17,14 +17,20 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[Login] 폼 제출 시작:', { email, isLogin });
+    
     setLoading(true);
     setError('');
 
     try {
       if (isLogin) {
+        console.log('[Login] 로그인 함수 호출');
         await login(email, password);
+        console.log('[Login] 로그인 완료');
+        
         // 로그인 성공 시 모달 닫기
         if (onClose) {
+          console.log('[Login] 모달 닫기');
           onClose();
         }
       } else {

@@ -1,0 +1,69 @@
+---
+alwaysApply: true
+---
+# ISPL 보험약관 AI 프로젝트 구조
+
+## 프로젝트 개요
+보험약관 기반 RAG(Retrieval-Augmented Generation) AI 시스템으로, FastAPI 백엔드와 Next.js 프론트엔드로 구성된 풀스택 애플리케이션입니다.
+
+## 주요 디렉토리 구조
+
+### Backend (Python/FastAPI)
+- `backend/main.py` - FastAPI 애플리케이션의 메인 진입점
+- `backend/routers/` - API 엔드포인트 라우터들
+  - `auth.py` - 인증 및 사용자 관리 API
+  - `policies.py` - 약관 관리 API (업로드, 조회, 삭제)
+  - `search.py` - RAG 기반 검색 API
+  - `workflow.py` - 워크플로우 모니터링 API
+- `backend/models/` - 데이터 모델
+  - `database.py` - SQLAlchemy ORM 모델
+  - `schemas.py` - Pydantic 검증 스키마
+- `backend/services/` - 비즈니스 로직 서비스 레이어
+- `backend/agents/` - LangGraph 에이전트 구현
+  - `supervisor.py` - 에이전트 오케스트레이션
+  - `embedding_agent.py` - 임베딩 생성
+  - `query_processor.py` - 쿼리 처리
+  - 기타 문서 처리 에이전트들
+- `backend/utils/` - 유틸리티 함수들
+
+### Frontend (Next.js/React/TypeScript)
+- `frontend/src/app/` - Next.js App Router 페이지
+- `frontend/src/components/` - React 컴포넌트들
+- `frontend/src/services/` - API 클라이언트 서비스
+- `frontend/src/types/` - TypeScript 타입 정의
+- `frontend/src/hooks/` - 커스텀 React 훅
+- `frontend/src/contexts/` - React Context 제공자
+
+### Database
+- `database/init.sql` - PostgreSQL 초기화 스크립트
+- `database/Dockerfile` - pgvector 지원 PostgreSQL 이미지
+
+## 기술 스택
+
+### Backend
+- **Framework**: FastAPI 0.104+
+- **Database**: PostgreSQL + pgvector
+- **ORM**: SQLAlchemy 2.0
+- **AI/ML**: LangChain, LangGraph, OpenAI
+- **Monitoring**: Langfuse
+- **Python**: 3.8 이상
+
+### Frontend
+- **Framework**: Next.js 14
+- **UI Library**: React 18
+- **Language**: TypeScript 5
+- **Styling**: Tailwind CSS
+- **State**: React Query
+- **Icons**: Lucide React
+- **Node**: 18.0.0 이상
+
+## 개발 워크플로우
+
+1. 백엔드 변경 시: `backend/` 디렉토리에서 작업 후 `python start.py`로 서버 재시작
+2. 프론트엔드 변경 시: `frontend/` 디렉토리에서 작업, 핫 리로드 자동 적용
+3. 데이터베이스 스키마 변경 시: `backend/models/database.py` 수정 후 마이그레이션
+4. API 추가 시: 라우터 생성 → 스키마 정의 → 서비스 구현 → 프론트엔드 타입 동기화
+
+## 환경 설정
+- Backend: `backend/env.example` 참고하여 `.env` 생성
+- Frontend: `frontend/env.example` 참고하여 `.env.local` 생성

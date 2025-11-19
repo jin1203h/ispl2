@@ -6,6 +6,7 @@ import Sidebar from '../components/layout/Sidebar';
 import ChatInterface from '../components/chat/ChatInterface';
 import PolicyManagement from '../components/policies/PolicyManagement';
 import WorkflowMonitoring from '../components/workflow/WorkflowMonitoring';
+import PerformanceDashboard from '../components/dashboard/PerformanceDashboard';
 import Login from '../components/auth/Login';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
@@ -45,6 +46,8 @@ function HomePage() {
         return <PolicyManagement isAuthenticated={isAuthenticated} />;
       case 'workflow':
         return <WorkflowMonitoring />;
+      case 'dashboard':
+        return <PerformanceDashboard />;
       default:
         return <ChatInterface />;
     }

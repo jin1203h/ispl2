@@ -1,0 +1,89 @@
+%%{init: {'theme':'dark', 'themeVariables': {
+  'primaryColor': '#1f2937',
+  'primaryTextColor': '#ffffff',
+  'primaryBorderColor': '#374151',
+  'lineColor': '#6b7280'
+}}}%%
+
+flowchart TD
+    %% 사용자 요청 플로우
+    User["👤 사용자<br/>웹 브라우저"]
+    
+    subgraph ProcessingFlow ["📄 문서 처리 플로우"]
+        Upload["📤 PDF 업로드"]
+        SupervisorStart["🎯 Supervisor Agent<br/>워크플로우 시작"]
+        
+        subgraph ParallelProcessing ["🔄 병렬 처리"]
+            PDFProcess["📄 PDF 분석<br/>구조 파악"]
+            TextExtract["📝 텍스트 추출<br/>내용 정제"]
+            TableExtract["📊 표 추출<br/>데이터 구조화"]
+            ImageOCR["🖼️ 이미지 OCR<br/>텍스트 인식"]
+        end
+        
+        MarkdownConv["📝 마크다운 변환<br/>통합 문서 생성"]
+        EmbeddingGen["🧠 임베딩 생성<br/>벡터화"]
+        VectorStore["🗂️ 벡터 저장<br/>pgvector DB"]
+        ProcessComplete["✅ 처리 완료<br/>검색 가능"]
+    end
+    
+    subgraph QueryFlow ["💬 질의 응답 플로우"]
+        UserQuery["💭 사용자 질의<br/>자연어 입력"]
+        RAGSearch["🔍 RAG 검색<br/>유사도 검색"]
+        ContextRetrieval["📋 컨텍스트 검색<br/>관련 청크 추출"]
+        GPTResponse["🤖 GPT-4 응답<br/>답변 생성"]
+        UserAnswer["📝 구조화된 답변<br/>사용자에게 전달"]
+    end
+    
+    subgraph MonitoringFlow ["📊 모니터링 플로우"]
+        AgentExecution["🎯 에이전트 실행"]
+        LogCapture["📋 로그 수집<br/>workflow_logs"]
+        MetricsCollection["📊 성능 수집<br/>응답시간, 상태"]
+        DashboardUpdate["📈 대시보드 업데이트<br/>실시간 시각화"]
+        LangFuseSync["📊 LangFuse 동기화<br/>외부 모니터링"]
+    end
+    
+    %% 플로우 연결
+    User --> Upload
+    Upload --> SupervisorStart
+    SupervisorStart --> PDFProcess
+    SupervisorStart --> TextExtract
+    SupervisorStart --> TableExtract
+    SupervisorStart --> ImageOCR
+    
+    PDFProcess --> MarkdownConv
+    TextExtract --> MarkdownConv
+    TableExtract --> MarkdownConv
+    ImageOCR --> MarkdownConv
+    
+    MarkdownConv --> EmbeddingGen
+    EmbeddingGen --> VectorStore
+    VectorStore --> ProcessComplete
+    
+    %% 질의 플로우
+    User --> UserQuery
+    UserQuery --> RAGSearch
+    RAGSearch --> ContextRetrieval
+    ContextRetrieval --> GPTResponse
+    GPTResponse --> UserAnswer
+    UserAnswer --> User
+    
+    %% 모니터링 플로우
+    SupervisorStart --> AgentExecution
+    AgentExecution --> LogCapture
+    AgentExecution --> MetricsCollection
+    LogCapture --> DashboardUpdate
+    MetricsCollection --> DashboardUpdate
+    AgentExecution --> LangFuseSync
+    
+    %% 스타일링
+    classDef user fill:#2196F3,stroke:#01579b,stroke-width:2px,color:#ffffff
+    classDef processing fill:#FF5722,stroke:#d32f2f,stroke-width:2px,color:#ffffff
+    classDef query fill:#4CAF50,stroke:#2e7d32,stroke-width:2px,color:#ffffff
+    classDef monitoring fill:#607D8B,stroke:#455a64,stroke-width:2px,color:#ffffff
+    classDef storage fill:#9C27B0,stroke:#7b1fa2,stroke-width:2px,color:#ffffff
+    
+    class User,UserQuery,UserAnswer user
+    class Upload,SupervisorStart,PDFProcess,TextExtract,TableExtract,ImageOCR,MarkdownConv,EmbeddingGen,ProcessComplete processing
+    class RAGSearch,ContextRetrieval,GPTResponse query
+    class AgentExecution,LogCapture,MetricsCollection,DashboardUpdate,LangFuseSync monitoring
+    class VectorStore storage

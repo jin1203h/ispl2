@@ -5,6 +5,7 @@ LangGraph Supervisor Agent
 import time
 import asyncio
 from typing import Dict, Any, List, Optional, Literal
+from datetime import datetime
 from .base import BaseAgent, DocumentProcessingState, ProcessingStatus
 
 try:
@@ -38,6 +39,20 @@ class SupervisorAgent(BaseAgent):
         self.markdown_processor = MarkdownProcessorAgent()
         self.embedding_agent = EmbeddingAgent()
         
+        # 에이전트 딕셔너리 생성 (추적용)
+        self.agents = {
+            "pdf_processor": self.pdf_processor,
+            "text_processor": self.text_processor,
+            "table_processor": self.table_processor,
+            "image_processor": self.image_processor,
+            "markdown_processor": self.markdown_processor,
+            "embedding_agent": self.embedding_agent
+        }
+        
+        # 성능 메트릭 수집기 초기화
+        self.performance_collector = None
+        self._initialize_performance_collector()
+        
         # 통합 파이프라인은 lazy loading으로 처리
         self.pipeline = None
         
@@ -46,6 +61,16 @@ class SupervisorAgent(BaseAgent):
             self.workflow = self._create_workflow()
         else:
             self.workflow = None
+    
+    def _initialize_performance_collector(self):
+        """성능 메트릭 수집기 초기화"""
+        try:
+            from services.performance_metrics_collector import get_performance_collector
+            self.performance_collector = get_performance_collector()
+            self.logger.debug("성능 메트릭 수집기 초기화 완료")
+        except Exception as e:
+            self.logger.warning(f"성능 메트릭 수집기 초기화 실패: {e}")
+            self.performance_collector = None
     
     def _create_workflow(self) -> Optional[StateGraph]:
         """LangGraph 워크플로우 생성"""
@@ -126,7 +151,86 @@ class SupervisorAgent(BaseAgent):
             return await self._run_sequential_workflow(initial_state)
     
     async def _run_langgraph_workflow(self, state: DocumentProcessingState) -> DocumentProcessingState:
-        """LangGraph 워크플로우 실행"""
+        """LangGraph 워크플로우 실행 (추적 기능 통합)"""
+        
+        if not self.monitor:
+            # 모니터링 비활성화 시 기본 실행
+            return await self._run_langgraph_workflow_basic(state)
+        
+        # 워크플로우 ID 생성 및 설정
+        workflow_id = f"langgraph_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{state.get('policy_id', 'unknown')}"
+        state["workflow_id"] = workflow_id
+        
+        # 워크플로우 추적 시작
+        async with self.monitor.trace_workflow(
+            "pdf_processing_workflow",
+            {
+                "workflow_id": workflow_id,
+                "file_name": state.get("file_name"),
+                "policy_id": state.get("policy_id"),
+                "workflow_type": "langgraph",
+                "start_time": datetime.now().isoformat()
+            }
+        ) as workflow_trace:
+            
+            try:
+                start_time = time.time()
+                
+                # LangGraph 워크플로우 실행 (내부적으로 각 노드가 추적됨)
+                result = await self.workflow.ainvoke(state)
+                
+                processing_time = time.time() - start_time
+                result["processing_time"] = processing_time
+                
+                # 워크플로우 완료 메트릭 로깅
+                await self.monitor.log_metrics({
+                    "workflow_type": "langgraph",
+                    "total_processing_time": processing_time,
+                    "total_pages": result.get("total_pages", 0),
+                    "total_chunks": result.get("total_chunks", 0),
+                    "agents_executed": len(self.agents),
+                    "status": "completed",
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                # 성능 메트릭 수집기에도 워크플로우 메트릭 전송
+                if self.performance_collector:
+                    await self._collect_workflow_performance_metrics(
+                        workflow_id=f"langgraph_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                        workflow_type="langgraph",
+                        result=result,
+                        processing_time=processing_time
+                    )
+                
+                self.log_step(
+                    result,
+                    f"LangGraph 워크플로우 완료 (추적됨): 처리시간 {processing_time:.2f}초"
+                )
+                
+                return result
+                
+            except Exception as e:
+                error_msg = f"LangGraph 워크플로우 실행 실패: {str(e)}"
+                
+                # 오류 메트릭 로깅
+                await self.monitor.log_metrics({
+                    "workflow_type": "langgraph",
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "status": "failed",
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                self.log_step(state, error_msg, "error")
+                return self.update_status(
+                    state,
+                    ProcessingStatus.FAILED,
+                    "workflow_execution",
+                    error_msg
+                )
+    
+    async def _run_langgraph_workflow_basic(self, state: DocumentProcessingState) -> DocumentProcessingState:
+        """기본 LangGraph 워크플로우 실행 (추적 없음)"""
         try:
             start_time = time.time()
             
@@ -154,7 +258,108 @@ class SupervisorAgent(BaseAgent):
             )
     
     async def _run_sequential_workflow(self, state: DocumentProcessingState) -> DocumentProcessingState:
-        """순차적 워크플로우 실행 (LangGraph 없을 때)"""
+        """순차적 워크플로우 실행 (LangGraph 없을 때) - 추적 기능 통합"""
+        
+        if not self.monitor:
+            # 모니터링 비활성화 시 기본 실행
+            return await self._run_sequential_workflow_basic(state)
+        
+        # 워크플로우 ID 생성 및 설정
+        workflow_id = f"sequential_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{state.get('policy_id', 'unknown')}"
+        state["workflow_id"] = workflow_id
+        
+        # 워크플로우 추적 시작
+        async with self.monitor.trace_workflow(
+            "pdf_processing_workflow_sequential",
+            {
+                "workflow_id": workflow_id,
+                "file_name": state.get("file_name"),
+                "policy_id": state.get("policy_id"),
+                "workflow_type": "sequential",
+                "start_time": datetime.now().isoformat()
+            }
+        ) as workflow_trace:
+            
+            try:
+                start_time = time.time()
+                
+                # 각 에이전트를 순차적으로 실행하면서 추적
+                agents_to_execute = [
+                    ("pdf_processor", self.pdf_processor),
+                    ("text_processor", self.text_processor),
+                    ("table_processor", self.table_processor),
+                    ("image_processor", self.image_processor),
+                    ("markdown_processor", self.markdown_processor),
+                    ("embedding_agent", self.embedding_agent)
+                ]
+                
+                for agent_name, agent in agents_to_execute:
+                    # PDF 분석이 실패하면 중단
+                    if agent_name == "pdf_processor" and state["status"] == ProcessingStatus.FAILED.value:
+                        return state
+                    
+                    # 각 에이전트 실행을 추적
+                    state = await agent.process_with_tracing(state, workflow_trace)
+                    
+                    # 중요한 단계에서 실패 시 중단 (선택적)
+                    if agent_name in ["pdf_processor", "text_processor"] and state["status"] == ProcessingStatus.FAILED.value:
+                        return state
+                
+                # 완료 처리
+                state = await self._finalize_processing(state)
+                
+                processing_time = time.time() - start_time
+                state["processing_time"] = processing_time
+                
+                # 워크플로우 완료 메트릭 로깅
+                await self.monitor.log_metrics({
+                    "workflow_type": "sequential",
+                    "total_processing_time": processing_time,
+                    "total_pages": state.get("total_pages", 0),
+                    "total_chunks": state.get("total_chunks", 0),
+                    "agents_executed": len(agents_to_execute),
+                    "status": "completed",
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                # 성능 메트릭 수집기에도 워크플로우 메트릭 전송
+                if self.performance_collector:
+                    await self._collect_workflow_performance_metrics(
+                        workflow_id=f"sequential_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                        workflow_type="sequential",
+                        result=state,
+                        processing_time=processing_time
+                    )
+                
+                self.log_step(
+                    state,
+                    f"순차 워크플로우 완료 (추적됨): 처리시간 {processing_time:.2f}초"
+                )
+                
+                return state
+                
+            except Exception as e:
+                error_msg = f"순차 워크플로우 실행 실패: {str(e)}"
+                
+                # 오류 메트릭 로깅
+                await self.monitor.log_metrics({
+                    "workflow_type": "sequential",
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "status": "failed",
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                self.log_step(state, error_msg, "error")
+                return self.update_status(
+                    state,
+                    ProcessingStatus.FAILED,
+                    "workflow_execution",
+                    error_msg
+                )
+    
+    async def _run_sequential_workflow_basic(self, state: DocumentProcessingState) -> DocumentProcessingState:
+        """기본 순차적 워크플로우 실행 (추적 없음)"""
         try:
             start_time = time.time()
             
@@ -269,29 +474,41 @@ class SupervisorAgent(BaseAgent):
             "total_chunks": 0
         }
     
-    # LangGraph 노드 함수들
+    # LangGraph 노드 함수들 (추적 기능 통합)
     async def _pdf_analysis_node(self, state: DocumentProcessingState) -> DocumentProcessingState:
         """PDF 분석 노드"""
+        if self.monitor:
+            return await self.pdf_processor.process_with_tracing(state)
         return await self.pdf_processor.process(state)
     
     async def _text_extraction_node(self, state: DocumentProcessingState) -> DocumentProcessingState:
         """텍스트 추출 노드"""
+        if self.monitor:
+            return await self.text_processor.process_with_tracing(state)
         return await self.text_processor.process(state)
     
     async def _table_extraction_node(self, state: DocumentProcessingState) -> DocumentProcessingState:
         """표 추출 노드"""
+        if self.monitor:
+            return await self.table_processor.process_with_tracing(state)
         return await self.table_processor.process(state)
     
     async def _image_ocr_node(self, state: DocumentProcessingState) -> DocumentProcessingState:
         """이미지 OCR 노드"""
+        if self.monitor:
+            return await self.image_processor.process_with_tracing(state)
         return await self.image_processor.process(state)
     
     async def _markdown_conversion_node(self, state: DocumentProcessingState) -> DocumentProcessingState:
         """Markdown 변환 노드"""
+        if self.monitor:
+            return await self.markdown_processor.process_with_tracing(state)
         return await self.markdown_processor.process(state)
     
     async def _embedding_generation_node(self, state: DocumentProcessingState) -> DocumentProcessingState:
         """임베딩 생성 노드"""
+        if self.monitor:
+            return await self.embedding_agent.process_with_tracing(state)
         return await self.embedding_agent.process(state)
     
     async def _finalize_node(self, state: DocumentProcessingState) -> DocumentProcessingState:
@@ -342,11 +559,55 @@ class SupervisorAgent(BaseAgent):
             state["file_name"]
         )
     
+    async def _collect_workflow_performance_metrics(self, 
+                                               workflow_id: str,
+                                               workflow_type: str, 
+                                               result: Dict[str, Any],
+                                               processing_time: float):
+        """워크플로우 성능 메트릭 수집"""
+        try:
+            # 성공/실패 에이전트 수 계산
+            successful_agents = 0
+            failed_agents = 0
+            
+            if result.get("status") == "completed":
+                successful_agents = len(self.agents)
+            else:
+                failed_agents = 1  # 최소 1개 에이전트 실패
+            
+            # 파일 크기 추정
+            file_size = 0
+            if result.get("raw_content"):
+                file_size = len(result["raw_content"])
+            
+            workflow_data = {
+                "total_processing_time": processing_time,
+                "agents_executed": len(self.agents),
+                "successful_agents": successful_agents,
+                "failed_agents": failed_agents,
+                "memory_peak": 0,  # 추후 구현
+                "avg_cpu_usage": 0.0,  # 추후 구현
+                "file_size": file_size,
+                "total_chunks": result.get("total_chunks", 0)
+            }
+            
+            await self.performance_collector.collect_workflow_metrics(
+                workflow_id=workflow_id,
+                workflow_type=workflow_type,
+                workflow_data=workflow_data
+            )
+            
+            self.log_step(result, f"워크플로우 성능 메트릭 수집 완료: {workflow_id}")
+            
+        except Exception as e:
+            self.log_step(result, f"워크플로우 성능 메트릭 수집 실패: {e}", "error")
+    
     def get_workflow_status(self) -> Dict[str, Any]:
         """워크플로우 상태 정보 반환"""
         return {
             "langgraph_available": LANGGRAPH_AVAILABLE,
             "workflow_initialized": self.workflow is not None,
+            "performance_collector_enabled": self.performance_collector is not None,
             "agents": {
                 "pdf_processor": self.pdf_processor.name,
                 "text_processor": self.text_processor.name,

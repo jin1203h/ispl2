@@ -1,0 +1,299 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ISPL2 시스템 아키텍처</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .diagram-container {
+            margin: 40px 0;
+            padding: 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #4fc3f7;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏗️ ISPL2 보험약관 AI 시스템 - 현재 구현 아키텍처</h1>
+    
+    <div class="diagram-container">
+        <h2>📊 전체 시스템 아키텍처</h2>
+        <div class="mermaid">
+%%{init: {'theme':'dark', 'themeVariables': {
+  'primaryColor': '#1f2937',
+  'primaryTextColor': '#ffffff',
+  'primaryBorderColor': '#374151',
+  'lineColor': '#6b7280',
+  'secondaryColor': '#374151',
+  'tertiaryColor': '#4b5563'
+}}}%%
+
+flowchart TB
+    %% 프론트엔드 레이어
+    subgraph Frontend ["🖥️ 프론트엔드 레이어 (React + Next.js + TypeScript)"]
+        subgraph ReactComponents ["React 컴포넌트"]
+            Chat["💬 ChatInterface<br/>AI 채팅 인터페이스"]
+            Policy["📄 PolicyManagement<br/>약관 관리"]
+            Workflow["📊 WorkflowMonitoring<br/>워크플로우 모니터링"]
+            Dashboard["📈 PerformanceDashboard<br/>성능 대시보드"]
+            Auth["🔐 Login<br/>사용자 인증"]
+        end
+        
+        APIClient["🔌 API Client<br/>services/api.ts<br/>HTTP 통신"]
+        AuthContext["👤 AuthContext<br/>인증 상태 관리"]
+    end
+    
+    %% 백엔드 API 레이어
+    subgraph Backend ["⚙️ 백엔드 레이어 (FastAPI + Python)"]
+        subgraph APIRouters ["🚀 API 라우터"]
+            AuthRouter["🔑 인증 API<br/>/auth/*"]
+            PolicyRouter["📋 약관 관리 API<br/>/policies/*"]
+            SearchRouter["🔍 검색 API<br/>/search/*"]
+            WorkflowRouter["📈 워크플로우 API<br/>/workflow/*"]
+            DashboardRouter["📊 대시보드 API<br/>/dashboard/*"]
+        end
+        
+        subgraph Services ["🛠️ 서비스 레이어"]
+            AuthService["🔐 인증 서비스<br/>JWT 토큰 관리"]
+            DBService["💾 데이터베이스 서비스<br/>SQLAlchemy ORM"]
+            VectorService["🗂️ 벡터 저장소 서비스<br/>pgvector 연동"]
+            PerformanceService["📊 성능 수집 서비스<br/>메트릭 수집"]
+            WorkflowLogger["📋 워크플로우 로거<br/>실행 로그 관리"]
+        end
+    end
+    
+    %% Multi-Agent 시스템
+    subgraph AgentSystem ["🤖 Multi-Agent 시스템 (LangGraph)"]
+        Supervisor["🎯 Supervisor Agent<br/>워크플로우 조율<br/>LangGraph 실행"]
+        
+        subgraph ProcessingAgents ["처리 에이전트"]
+            PDFAgent["📄 PDF Processor<br/>PDF 구조 분석"]
+            TextAgent["📝 Text Processor<br/>텍스트 추출/정제"]
+            TableAgent["📊 Table Processor<br/>표 데이터 구조화"]
+            ImageAgent["🖼️ Image Processor<br/>OCR/이미지 분석"]
+            MarkdownAgent["📝 Markdown Processor<br/>마크다운 변환"]
+        end
+        
+        subgraph EmbeddingAgents ["임베딩 에이전트"]
+            EmbedAgent["🧠 Embedding Agent<br/>임베딩 생성"]
+            VectorAgent["🗂️ VectorStore Agent<br/>pgvector 저장"]
+        end
+    end
+    
+    %% 데이터베이스 레이어
+    subgraph Database ["🗄️ 데이터베이스 레이어 (PostgreSQL + pgvector)"]
+        subgraph CoreTables ["📊 핵심 테이블"]
+            Users["👥 users<br/>사용자 정보"]
+            Policies["📑 policies<br/>약관 메타데이터"]
+            WorkflowLogs["📋 workflow_logs<br/>워크플로우 실행 로그"]
+        end
+        
+        subgraph VectorTables ["🧠 벡터 테이블"]
+            Embeddings1["🧠 embeddings_text_embedding_3<br/>3072차원 벡터"]
+            Embeddings2["🧠 embeddings_qwen<br/>4096차원 벡터"]
+        end
+        
+        VectorDB["🔍 pgvector<br/>벡터 인덱스 & 검색<br/>HNSW, IVFFlat"]
+    end
+    
+    %% 외부 서비스
+    subgraph External ["🌐 외부 서비스"]
+        OpenAI["🤖 OpenAI API<br/>GPT-4, text-embedding-3"]
+        LangFuse["📊 LangFuse<br/>워크플로우 모니터링"]
+        MCP["🔗 MCP Protocol<br/>자동 Tool 호출"]
+    end
+    
+    %% 모니터링 & 성능
+    subgraph Monitoring ["📊 모니터링 & 성능 추적"]
+        RealTimeDashboard["📈 실시간 대시보드<br/>Recharts 시각화"]
+        MetricsCollector["📊 성능 메트릭 수집<br/>응답시간, 성공률"]
+        AlertSystem["🚨 알림 시스템<br/>오류 감지"]
+    end
+    
+    %% 데이터 플로우 연결
+    Chat --> APIClient
+    Policy --> APIClient
+    Workflow --> APIClient
+    Dashboard --> APIClient
+    Auth --> APIClient
+    
+    APIClient --> AuthRouter
+    APIClient --> PolicyRouter
+    APIClient --> SearchRouter
+    APIClient --> WorkflowRouter
+    APIClient --> DashboardRouter
+    
+    AuthRouter --> AuthService
+    PolicyRouter --> DBService
+    SearchRouter --> Supervisor
+    WorkflowRouter --> WorkflowLogger
+    DashboardRouter --> PerformanceService
+    
+    Supervisor --> PDFAgent
+    Supervisor --> TextAgent
+    Supervisor --> TableAgent
+    Supervisor --> ImageAgent
+    Supervisor --> MarkdownAgent
+    Supervisor --> EmbedAgent
+    Supervisor --> VectorAgent
+    
+    DBService --> Users
+    DBService --> Policies
+    WorkflowLogger --> WorkflowLogs
+    
+    VectorAgent --> Embeddings1
+    VectorAgent --> Embeddings2
+    VectorAgent --> VectorDB
+    
+    EmbedAgent --> OpenAI
+    Supervisor --> LangFuse
+    Chat --> MCP
+    
+    %% 모니터링 연결
+    Supervisor -.-> MetricsCollector
+    WorkflowLogger -.-> RealTimeDashboard
+    PerformanceService -.-> MetricsCollector
+    MetricsCollector -.-> AlertSystem
+    
+    %% 스타일링
+    classDef frontend fill:#2196F3,stroke:#01579b,stroke-width:2px,color:#ffffff
+    classDef backend fill:#4CAF50,stroke:#2e7d32,stroke-width:2px,color:#ffffff
+    classDef agent fill:#FF5722,stroke:#d32f2f,stroke-width:2px,color:#ffffff
+    classDef database fill:#9C27B0,stroke:#7b1fa2,stroke-width:2px,color:#ffffff
+    classDef external fill:#FF9800,stroke:#f57c00,stroke-width:2px,color:#ffffff
+    classDef monitoring fill:#607D8B,stroke:#455a64,stroke-width:2px,color:#ffffff
+    
+    class Chat,Policy,Workflow,Dashboard,Auth,APIClient,AuthContext frontend
+    class AuthRouter,PolicyRouter,SearchRouter,WorkflowRouter,DashboardRouter,AuthService,DBService,VectorService,PerformanceService,WorkflowLogger backend
+    class Supervisor,PDFAgent,TextAgent,TableAgent,ImageAgent,MarkdownAgent,EmbedAgent,VectorAgent agent
+    class Users,Policies,WorkflowLogs,Embeddings1,Embeddings2,VectorDB database
+    class OpenAI,LangFuse,MCP external
+    class RealTimeDashboard,MetricsCollector,AlertSystem monitoring
+        </div>
+    </div>
+    
+    <div class="diagram-container">
+        <h2>🔄 데이터 플로우 다이어그램</h2>
+        <div class="mermaid">
+%%{init: {'theme':'dark', 'themeVariables': {
+  'primaryColor': '#1f2937',
+  'primaryTextColor': '#ffffff',
+  'primaryBorderColor': '#374151',
+  'lineColor': '#6b7280'
+}}}%%
+
+flowchart TD
+    %% 사용자 요청 플로우
+    User["👤 사용자<br/>웹 브라우저"]
+    
+    subgraph ProcessingFlow ["📄 문서 처리 플로우"]
+        Upload["📤 PDF 업로드"]
+        SupervisorStart["🎯 Supervisor Agent<br/>워크플로우 시작"]
+        
+        subgraph ParallelProcessing ["🔄 병렬 처리"]
+            PDFProcess["📄 PDF 분석<br/>구조 파악"]
+            TextExtract["📝 텍스트 추출<br/>내용 정제"]
+            TableExtract["📊 표 추출<br/>데이터 구조화"]
+            ImageOCR["🖼️ 이미지 OCR<br/>텍스트 인식"]
+        end
+        
+        MarkdownConv["📝 마크다운 변환<br/>통합 문서 생성"]
+        EmbeddingGen["🧠 임베딩 생성<br/>벡터화"]
+        VectorStore["🗂️ 벡터 저장<br/>pgvector DB"]
+        ProcessComplete["✅ 처리 완료<br/>검색 가능"]
+    end
+    
+    subgraph QueryFlow ["💬 질의 응답 플로우"]
+        UserQuery["💭 사용자 질의<br/>자연어 입력"]
+        RAGSearch["🔍 RAG 검색<br/>유사도 검색"]
+        ContextRetrieval["📋 컨텍스트 검색<br/>관련 청크 추출"]
+        GPTResponse["🤖 GPT-4 응답<br/>답변 생성"]
+        UserAnswer["📝 구조화된 답변<br/>사용자에게 전달"]
+    end
+    
+    subgraph MonitoringFlow ["📊 모니터링 플로우"]
+        AgentExecution["🎯 에이전트 실행"]
+        LogCapture["📋 로그 수집<br/>workflow_logs"]
+        MetricsCollection["📊 성능 수집<br/>응답시간, 상태"]
+        DashboardUpdate["📈 대시보드 업데이트<br/>실시간 시각화"]
+        LangFuseSync["📊 LangFuse 동기화<br/>외부 모니터링"]
+    end
+    
+    %% 플로우 연결
+    User --> Upload
+    Upload --> SupervisorStart
+    SupervisorStart --> PDFProcess
+    SupervisorStart --> TextExtract
+    SupervisorStart --> TableExtract
+    SupervisorStart --> ImageOCR
+    
+    PDFProcess --> MarkdownConv
+    TextExtract --> MarkdownConv
+    TableExtract --> MarkdownConv
+    ImageOCR --> MarkdownConv
+    
+    MarkdownConv --> EmbeddingGen
+    EmbeddingGen --> VectorStore
+    VectorStore --> ProcessComplete
+    
+    %% 질의 플로우
+    User --> UserQuery
+    UserQuery --> RAGSearch
+    RAGSearch --> ContextRetrieval
+    ContextRetrieval --> GPTResponse
+    GPTResponse --> UserAnswer
+    UserAnswer --> User
+    
+    %% 모니터링 플로우
+    SupervisorStart --> AgentExecution
+    AgentExecution --> LogCapture
+    AgentExecution --> MetricsCollection
+    LogCapture --> DashboardUpdate
+    MetricsCollection --> DashboardUpdate
+    AgentExecution --> LangFuseSync
+    
+    %% 스타일링
+    classDef user fill:#2196F3,stroke:#01579b,stroke-width:2px,color:#ffffff
+    classDef processing fill:#FF5722,stroke:#d32f2f,stroke-width:2px,color:#ffffff
+    classDef query fill:#4CAF50,stroke:#2e7d32,stroke-width:2px,color:#ffffff
+    classDef monitoring fill:#607D8B,stroke:#455a64,stroke-width:2px,color:#ffffff
+    classDef storage fill:#9C27B0,stroke:#7b1fa2,stroke-width:2px,color:#ffffff
+    
+    class User,UserQuery,UserAnswer user
+    class Upload,SupervisorStart,PDFProcess,TextExtract,TableExtract,ImageOCR,MarkdownConv,EmbeddingGen,ProcessComplete processing
+    class RAGSearch,ContextRetrieval,GPTResponse query
+    class AgentExecution,LogCapture,MetricsCollection,DashboardUpdate,LangFuseSync monitoring
+    class VectorStore storage
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+    </script>
+</body>
+</html>

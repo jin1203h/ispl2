@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, FileText, Activity, LogIn, LogOut } from 'lucide-react';
+import { MessageCircle, FileText, Activity, LogIn, LogOut, BarChart3 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLoginClick
     { id: 'chat', label: 'AI 채팅', icon: MessageCircle, requiresAuth: false },
     { id: 'policies', label: '약관 관리', icon: FileText, requiresAuth: true },
     { id: 'workflow', label: '워크플로우', icon: Activity, requiresAuth: true },
+    { id: 'dashboard', label: '모니터링 대시보드', icon: BarChart3, requiresAuth: true },
   ];
 
 

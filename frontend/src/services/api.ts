@@ -26,6 +26,10 @@ class ApiService {
 
   constructor() {
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    console.log('[API] 초기화:', {
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+      baseURL: this.baseURL
+    });
     
     this.api = axios.create({
       baseURL: this.baseURL,
@@ -44,7 +48,14 @@ class ApiService {
           config.headers.Authorization = `Bearer ${token}`;
         }
         
-        console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(`[API] 요청 전송:`, {
+          method: config.method?.toUpperCase(),
+          url: config.url,
+          baseURL: config.baseURL,
+          fullURL: `${config.baseURL}${config.url}`,
+          headers: config.headers,
+          data: config.data
+        });
         return config;
       },
       (error) => {
@@ -97,17 +108,35 @@ class ApiService {
   }
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await this.api.post<LoginResponse>('/auth/login', {
-      email: credentials.email,
-      password: credentials.password,
-    });
+    console.log('[API] 로그인 시도:', { email: credentials.email, baseURL: this.baseURL });
+    
+    try {
+      const response = await this.api.post<LoginResponse>('/auth/login', {
+        email: credentials.email,
+        password: credentials.password,
+      });
 
-    // 토큰 저장
-    if (response.data.access_token) {
-      this.setAuthToken(response.data.access_token);
+      console.log('[API] 로그인 응답:', { 
+        status: response.status, 
+        hasToken: !!response.data.access_token,
+        user: response.data.user 
+      });
+
+      // 토큰 저장
+      if (response.data.access_token) {
+        this.setAuthToken(response.data.access_token);
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[API] 로그인 오류:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        code: error.code
+      });
+      throw error;
     }
-
-    return response.data;
   }
 
   async logout(): Promise<void> {
@@ -239,6 +268,89 @@ class ApiService {
 
   async getPolicyStats(): Promise<PolicyStats> {
     const response = await this.api.get<PolicyStats>('/stats/policies');
+    return response.data;
+  }
+
+  // =====================================
+  // 성능 메트릭 대시보드 API
+  // =====================================
+
+  async getDashboardHealth(): Promise<{ status: string; services: any; cache_status: any; timestamp: string }> {
+    const response = await this.api.get('/dashboard/health');
+    return response.data;
+  }
+
+  async getDemoMetrics(): Promise<{ success: boolean; data: any; message: string }> {
+    const response = await this.api.get('/dashboard/demo/metrics');
+    return response.data;
+  }
+
+  async getMetricsSummary(hours: number = 24): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const response = await this.api.get(`/dashboard/metrics/summary?hours=${hours}`);
+    return response.data;
+  }
+
+  async getRealtimeMetrics(): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const response = await this.api.get('/dashboard/metrics/realtime');
+    return response.data;
+  }
+
+  async getAgentMetrics(agentName?: string, hours: number = 24): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const params = new URLSearchParams({ hours: hours.toString() });
+    if (agentName) params.append('agent_name', agentName);
+    const response = await this.api.get(`/dashboard/metrics/agents?${params}`);
+    return response.data;
+  }
+
+  async getWorkflowMetrics(workflowType?: string, hours: number = 24): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const params = new URLSearchParams({ hours: hours.toString() });
+    if (workflowType) params.append('workflow_type', workflowType);
+    const response = await this.api.get(`/dashboard/metrics/workflows?${params}`);
+    return response.data;
+  }
+
+  async getWorkflowExecutions(statusFilter?: string, limit: number = 50): Promise<{ success: boolean; data: any; timestamp: string }> {
+    try {
+      const params = new URLSearchParams({ limit: limit.toString() });
+      if (statusFilter) params.append('status_filter', statusFilter);
+      const response = await this.api.get(`/workflow/executions?${params}`);
+      return response.data;
+    } catch (error: any) {
+      // 인증 오류 시 데모 엔드포인트 사용
+      if (error.response?.status === 401) {
+        console.log('인증 실패, 데모 엔드포인트 사용');
+        return this.getWorkflowExecutionsDemo(statusFilter, limit);
+      }
+      throw error;
+    }
+  }
+
+  async getWorkflowExecutionsDemo(statusFilter?: string, limit: number = 50): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    if (statusFilter) params.append('status_filter', statusFilter);
+    const response = await this.api.get(`/workflow/executions/demo?${params}`);
+    return response.data;
+  }
+
+  async getSystemMetrics(hours: number = 24): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const response = await this.api.get(`/dashboard/metrics/system?hours=${hours}`);
+    return response.data;
+  }
+
+  async getPerformanceTrends(metricType: string = 'execution_time', hours: number = 24): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const response = await this.api.get(`/dashboard/metrics/trends?metric_type=${metricType}&hours=${hours}`);
+    return response.data;
+  }
+
+  async getBottlenecks(severity?: string, hours: number = 24): Promise<{ success: boolean; data: any; timestamp: string }> {
+    const params = new URLSearchParams({ hours: hours.toString() });
+    if (severity) params.append('severity', severity);
+    const response = await this.api.get(`/dashboard/metrics/bottlenecks?${params}`);
+    return response.data;
+  }
+
+  async triggerMetricsCollection(): Promise<{ success: boolean; message: string; timestamp: string }> {
+    const response = await this.api.post('/dashboard/metrics/collect');
     return response.data;
   }
 

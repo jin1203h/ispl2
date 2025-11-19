@@ -1,0 +1,349 @@
+---
+description: AI/RAG 시스템 개발 가이드 - LangChain, LangGraph, 임베딩, 벡터 DB
+---
+# AI/RAG 시스템 개발 가이드
+
+## RAG (Retrieval-Augmented Generation) 아키텍처
+
+### 시스템 개요
+보험약관 문서를 기반으로 한 질의응답 시스템으로, 다음 단계로 구성됩니다:
+
+1. **문서 처리**: PDF → Markdown 변환
+2. **청킹**: 문서를 의미 있는 청크로 분할
+3. **임베딩**: 청크를 벡터로 변환
+4. **저장**: pgvector에 임베딩 저장
+5. **검색**: 사용자 쿼리와 유사한 청크 검색
+6. **생성**: LLM을 사용하여 답변 생성
+
+## LangChain/LangGraph 패턴
+
+### 에이전트 구조
+```python
+# backend/agents/base.py
+from langchain.agents import Agent
+
+class BaseAgent:
+    """모든 에이전트의 기본 클래스"""
+    
+    async def process(self, input_data):
+        """각 에이전트가 구현해야 하는 처리 메서드"""
+        raise NotImplementedError
+```
+
+### LangGraph 워크플로우
+- `backend/agents/supervisor.py`에서 에이전트 체인 관리
+- StateGraph로 에이전트 간 데이터 흐름 정의
+- 각 노드는 특정 처리 단계를 담당
+
+```python
+from langgraph.graph import StateGraph
+
+# 워크플로우 정의
+workflow = StateGraph(State)
+workflow.add_node("embedding", embedding_agent)
+workflow.add_node("retrieval", retrieval_agent)
+workflow.add_node("generation", generation_agent)
+
+# 에지 연결
+workflow.add_edge("embedding", "retrieval")
+workflow.add_edge("retrieval", "generation")
+```
+
+## 문서 처리 파이프라인
+
+### PDF 처리
+- **라이브러리**: PyMuPDF, pdfplumber, camelot-py
+- **에이전트**: `pdf_processor.py`
+- **출력**: Markdown 형식
+
+```python
+# backend/agents/pdf_processor.py
+async def process_pdf(file_path: str) -> str:
+    """PDF를 Markdown으로 변환"""
+    # 1. 텍스트 추출
+    # 2. 테이블 추출
+    # 3. 이미지 추출 및 캡션 생성
+    # 4. Markdown 조합
+    return markdown_content
+```
+
+### 이미지 처리
+- **에이전트**: `image_processor.py`
+- **기능**: 이미지에서 텍스트 추출, 캡션 생성
+- Vision API 활용
+
+### 테이블 처리
+- **에이전트**: `table_processor.py`
+- **라이브러리**: camelot-py, tabula-py
+- **출력**: Markdown 테이블 형식
+
+## 임베딩 생성
+
+### 임베딩 모델
+- **기본**: OpenAI text-embedding-3-small (1536 차원)
+- **대안**: 한국어 특화 모델 고려 가능
+- **에이전트**: `embedding_agent.py`, `quality_embedding_agent.py`
+
+```python
+from langchain_openai import OpenAIEmbeddings
+
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    openai_api_key=settings.openai_api_key
+)
+
+async def create_embeddings(texts: List[str]) -> List[List[float]]:
+    """텍스트 리스트를 임베딩으로 변환"""
+    return await embeddings.aembed_documents(texts)
+```
+
+### 청킹 전략
+- **방식**: 의미 기반 청킹 + 오버랩
+- **크기**: 500-1000 토큰
+- **오버랩**: 100-200 토큰
+- **서비스**: `backend/services/chunking_service.py`
+
+```python
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+    separators=["\n\n", "\n", " ", ""]
+)
+
+chunks = text_splitter.split_text(document)
+```
+
+## 벡터 데이터베이스 (pgvector)
+
+### 스키마 설계
+```sql
+-- database/init.sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE embeddings (
+    id SERIAL PRIMARY KEY,
+    policy_id INTEGER REFERENCES policies(id),
+    chunk_text TEXT,
+    embedding vector(1536),
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- HNSW 인덱스 (빠른 검색)
+CREATE INDEX ON embeddings USING hnsw (embedding vector_cosine_ops);
+```
+
+### 유사도 검색
+```python
+from sqlalchemy import select, text
+
+async def search_similar(
+    query_embedding: List[float],
+    limit: int = 5
+) -> List[ChunkResult]:
+    """코사인 유사도로 유사한 청크 검색"""
+    
+    query = text("""
+        SELECT id, chunk_text, metadata,
+               1 - (embedding <=> :query_embedding) as similarity
+        FROM embeddings
+        ORDER BY embedding <=> :query_embedding
+        LIMIT :limit
+    """)
+    
+    result = await db.execute(
+        query,
+        {"query_embedding": query_embedding, "limit": limit}
+    )
+    return result.all()
+```
+
+## 쿼리 처리 파이프라인
+
+### 쿼리 이해
+- **에이전트**: `query_processor.py`
+- **기능**:
+  - 쿼리 의도 분석
+  - 키워드 추출
+  - 쿼리 확장/재작성
+
+```python
+async def process_query(user_query: str) -> ProcessedQuery:
+    """사용자 쿼리 전처리 및 분석"""
+    
+    # 1. 쿼리 정제
+    cleaned = clean_query(user_query)
+    
+    # 2. 의도 분석
+    intent = analyze_intent(cleaned)
+    
+    # 3. 키워드 추출
+    keywords = extract_keywords(cleaned)
+    
+    return ProcessedQuery(
+        original=user_query,
+        cleaned=cleaned,
+        intent=intent,
+        keywords=keywords
+    )
+```
+
+### 검색 단계
+1. **쿼리 임베딩**: 사용자 쿼리를 벡터로 변환
+2. **유사도 검색**: pgvector에서 top-k 검색
+3. **리랭킹**: 검색 결과 재정렬 (선택적)
+4. **컨텍스트 구성**: 관련 청크들을 컨텍스트로 조합
+
+### 답변 생성
+```python
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+    model="gpt-4",
+    temperature=0.1  # 일관성 있는 답변을 위해 낮게 설정
+)
+
+async def generate_answer(
+    query: str,
+    context: str,
+    prompt_template: str
+) -> str:
+    """컨텍스트를 기반으로 답변 생성"""
+    
+    prompt = prompt_template.format(
+        context=context,
+        question=query
+    )
+    
+    response = await llm.ainvoke(prompt)
+    return response.content
+```
+
+## 프롬프트 엔지니어링
+
+### 프롬프트 저장
+- **위치**: `backend/prompts/`
+- **형식**: 텍스트 파일 (`.txt`)
+- **관리**: 버전 관리 및 A/B 테스팅 가능
+
+```python
+# backend/prompts/insurance_rag_prompt.txt
+당신은 보험약관 전문가입니다. 제공된 약관 내용을 기반으로 정확하게 답변하세요.
+
+약관 내용:
+{context}
+
+질문: {question}
+
+답변 작성 시 주의사항:
+1. 약관 내용에 근거하여 답변하세요
+2. 확실하지 않은 경우 명확히 밝히세요
+3. 관련 조항을 인용하세요
+4. 한국어로 친절하게 답변하세요
+```
+
+### 프롬프트 로드
+```python
+def load_prompt(prompt_name: str) -> str:
+    """프롬프트 파일 로드"""
+    prompt_path = f"prompts/{prompt_name}.txt"
+    with open(prompt_path, 'r', encoding='utf-8') as f:
+        return f.read()
+```
+
+## 모니터링 및 평가
+
+### Langfuse 통합
+- **목적**: AI 워크플로우 추적 및 성능 분석
+- **설정**: `backend/docker-compose.langfuse.yml`
+- **사용**: 각 에이전트 호출 시 추적
+
+```python
+from langfuse import Langfuse
+
+langfuse = Langfuse(
+    public_key=settings.langfuse_public_key,
+    secret_key=settings.langfuse_secret_key
+)
+
+# 추적 시작
+trace = langfuse.trace(name="rag_pipeline")
+
+with trace.span(name="embedding"):
+    embeddings = await create_embeddings(text)
+
+with trace.span(name="search"):
+    results = await search_similar(embeddings)
+```
+
+### 성능 메트릭
+- **응답 시간**: 각 단계별 소요 시간
+- **검색 품질**: 정확도, 재현율
+- **답변 품질**: 사용자 피드백
+- **토큰 사용량**: 비용 추적
+
+### 로깅
+```python
+import structlog
+
+logger = structlog.get_logger()
+
+logger.info(
+    "rag_search_completed",
+    query=user_query,
+    num_results=len(results),
+    response_time=elapsed_time
+)
+```
+
+## 최적화 전략
+
+### 인덱스 최적화
+- **HNSW**: 빠른 근사 검색
+- **IVFFlat**: 메모리 효율적
+- 선택 기준: 데이터 규모와 검색 속도 요구사항
+
+```sql
+-- HNSW (고속, 높은 정확도)
+CREATE INDEX ON embeddings USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+-- IVFFlat (메모리 효율)
+CREATE INDEX ON embeddings USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+```
+
+### 캐싱 전략
+- 자주 조회되는 쿼리 결과 캐싱
+- 임베딩 캐싱 (동일 텍스트)
+- Redis 또는 인메모리 캐시 활용
+
+### 배치 처리
+- 대량 문서 처리 시 배치 단위로 처리
+- 임베딩 생성 시 배치 API 사용
+
+## 보안 고려사항
+
+### API 키 관리
+- 환경 변수로 관리
+- 프로덕션에서는 시크릿 관리 서비스 사용
+- 절대 코드에 하드코딩 금지
+
+### 데이터 보안
+- 민감 정보 필터링
+- 사용자별 접근 제어
+- 로그에서 개인정보 제거
+
+## 한국어 처리
+
+### 한국어 NLP
+- **토크나이저**: 필요시 KoNLPy, Mecab 사용
+- **임베딩**: 한국어 특화 모델 고려
+- **프롬프트**: 한국어로 명확하게 작성
+
+### 보험 도메인 용어
+- 전문 용어 사전 유지
+- 동의어 처리
+- 약어 확장

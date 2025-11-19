@@ -1,0 +1,351 @@
+---
+globs: frontend/**/*.{ts,tsx}
+description: TypeScript 프론트엔드 코딩 규칙 및 React/Next.js 베스트 프랙티스
+---
+# TypeScript/React/Next.js 프론트엔드 코딩 규칙
+
+## 코드 스타일
+
+### 포맷팅
+- **Formatter**: Prettier
+- **Linter**: ESLint (Next.js 설정 사용)
+- **세미콜론**: 사용
+- **따옴표**: 작은따옴표 선호
+- **들여쓰기**: 2칸
+
+### 네이밍 컨벤션
+- **컴포넌트**: `PascalCase` (예: `ChatInterface.tsx`)
+- **함수/변수**: `camelCase`
+- **상수**: `UPPER_SNAKE_CASE`
+- **타입/인터페이스**: `PascalCase`
+- **파일명**: 컴포넌트는 `PascalCase.tsx`, 유틸은 `camelCase.ts`
+
+## TypeScript 규칙
+
+### 타입 정의
+- `frontend/src/types/` 디렉토리에 타입 정의
+- 백엔드 API 응답과 일치하는 타입 작성
+- `any` 사용 지양, 필요시 `unknown` 사용
+
+```typescript
+// types/policy.ts
+export interface Policy {
+  id: number;
+  title: string;
+  description?: string;
+  created_at: string;
+  user_id: number;
+}
+
+export interface PolicyListResponse {
+  items: Policy[];
+  total: number;
+}
+```
+
+### 타입 vs 인터페이스
+- **Interface**: 확장 가능한 객체 타입, 컴포넌트 Props
+- **Type**: Union, Intersection, 유틸리티 타입
+
+```typescript
+// Props는 interface 사용
+interface ChatMessageProps {
+  message: string;
+  sender: 'user' | 'assistant';
+  timestamp: Date;
+}
+
+// Union 타입은 type 사용
+type Status = 'idle' | 'loading' | 'success' | 'error';
+```
+
+## React 컴포넌트
+
+### 함수형 컴포넌트
+- 항상 함수형 컴포넌트 사용 (클래스 컴포넌트 사용 금지)
+- 화살표 함수 또는 function 선언 일관성 유지
+
+```typescript
+// 선호하는 방식
+export default function ChatInterface() {
+  return <div>...</div>;
+}
+
+// 또는
+export const ChatMessage: React.FC<ChatMessageProps> = ({ message, sender }) => {
+  return <div>...</div>;
+};
+```
+
+### Props 패턴
+```typescript
+interface ComponentProps {
+  required: string;
+  optional?: number;
+  children?: React.ReactNode;
+  onAction: (id: number) => void;
+}
+
+export function Component({ 
+  required, 
+  optional = 10,
+  children,
+  onAction 
+}: ComponentProps) {
+  // 구현
+}
+```
+
+### Hooks 사용
+
+#### useState
+```typescript
+const [count, setCount] = useState<number>(0);
+const [user, setUser] = useState<User | null>(null);
+```
+
+#### useEffect
+```typescript
+useEffect(() => {
+  // 부수 효과
+  return () => {
+    // 클린업
+  };
+}, [dependencies]);
+```
+
+#### 커스텀 훅
+- `frontend/src/hooks/` 디렉토리에 작성
+- `use` 접두사 사용
+- 재사용 가능한 로직 추상화
+
+```typescript
+// hooks/useAuth.ts
+export function useAuth() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // 인증 로직
+  }, []);
+  
+  return { user, loading };
+}
+```
+
+## Next.js 패턴
+
+### App Router (Next.js 14)
+- `frontend/src/app/` 디렉토리 사용
+- 파일 기반 라우팅
+- `page.tsx`: 페이지 컴포넌트
+- `layout.tsx`: 레이아웃 컴포넌트
+- `loading.tsx`: 로딩 상태
+- `error.tsx`: 에러 처리
+
+### 서버/클라이언트 컴포넌트
+```typescript
+// 클라이언트 컴포넌트 (상호작용, 훅 사용)
+'use client';
+
+export default function InteractiveComponent() {
+  const [state, setState] = useState();
+  // ...
+}
+
+// 서버 컴포넌트 (기본, 데이터 페칭)
+export default async function ServerComponent() {
+  const data = await fetchData();
+  return <div>{data}</div>;
+}
+```
+
+### 경로 별칭 (Path Aliases)
+- `@/`를 사용하여 절대 경로 import
+- `tsconfig.json`에 정의된 경로 활용
+
+```typescript
+import { Button } from '@/components/Button';
+import { api } from '@/services/api';
+import { User } from '@/types/user';
+```
+
+## 상태 관리
+
+### React Query
+- API 데이터 페칭 및 캐싱에 사용
+- `useQuery`, `useMutation` 활용
+
+```typescript
+import { useQuery } from 'react-query';
+
+export function PoliciesList() {
+  const { data, isLoading, error } = useQuery(
+    ['policies'],
+    () => api.getPolicies()
+  );
+  
+  if (isLoading) return <div>로딩 중...</div>;
+  if (error) return <div>에러 발생</div>;
+  
+  return <div>{data.map(...)}</div>;
+}
+```
+
+### Context API
+- 전역 상태 관리 (테마, 인증 등)
+- `frontend/src/contexts/` 디렉토리에 작성
+
+```typescript
+// contexts/AuthContext.tsx
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  
+  return (
+    <AuthContext.Provider value={{ user, setUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+```
+
+## API 통신
+
+### API 서비스 레이어
+- `frontend/src/services/api.ts`에 중앙 관리
+- axios 사용, 공통 설정 적용
+
+```typescript
+// services/api.ts
+import axios from 'axios';
+
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// 인터셉터로 인증 토큰 추가
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const api = {
+  getPolicies: () => apiClient.get<PolicyListResponse>('/policies'),
+  createPolicy: (data: PolicyCreate) => apiClient.post('/policies', data),
+  // ...
+};
+```
+
+## 스타일링 (Tailwind CSS)
+
+### Tailwind 사용
+- 유틸리티 클래스 사용
+- 커스텀 스타일은 최소화
+- `clsx` 라이브러리로 조건부 클래스 관리
+
+```typescript
+import clsx from 'clsx';
+
+export function Button({ variant, children }: ButtonProps) {
+  return (
+    <button
+      className={clsx(
+        'px-4 py-2 rounded font-medium',
+        variant === 'primary' && 'bg-blue-500 text-white',
+        variant === 'secondary' && 'bg-gray-200 text-gray-800'
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+```
+
+### 반응형 디자인
+- Tailwind 브레이크포인트 사용: `sm:`, `md:`, `lg:`, `xl:`
+- 모바일 우선 (Mobile-first) 접근
+
+## 에러 처리
+
+### Try-Catch 패턴
+```typescript
+async function handleSubmit() {
+  try {
+    setLoading(true);
+    const result = await api.createPolicy(data);
+    toast.success('생성 완료');
+  } catch (error) {
+    console.error('Error:', error);
+    toast.error('생성 실패');
+  } finally {
+    setLoading(false);
+  }
+}
+```
+
+### Error Boundary
+- Next.js의 `error.tsx` 활용
+- 예상치 못한 에러 처리
+
+## 성능 최적화
+
+### React.memo
+- 불필요한 리렌더링 방지
+
+```typescript
+export const MemoizedComponent = React.memo(function Component({ data }: Props) {
+  return <div>{data}</div>;
+});
+```
+
+### useMemo, useCallback
+```typescript
+const memoizedValue = useMemo(() => computeExpensiveValue(a, b), [a, b]);
+const memoizedCallback = useCallback(() => doSomething(a, b), [a, b]);
+```
+
+### Dynamic Import
+```typescript
+import dynamic from 'next/dynamic';
+
+const HeavyComponent = dynamic(() => import('@/components/HeavyComponent'), {
+  loading: () => <p>로딩 중...</p>,
+  ssr: false,
+});
+```
+
+## 접근성 (Accessibility)
+
+- 시맨틱 HTML 사용
+- ARIA 속성 적절히 사용
+- 키보드 네비게이션 지원
+- 적절한 대비 색상
+
+```typescript
+<button
+  aria-label="메뉴 열기"
+  onClick={handleClick}
+>
+  <MenuIcon />
+</button>
+```
+
+## 환경 변수
+
+- `NEXT_PUBLIC_` 접두사로 클라이언트 노출
+- `.env.local` 파일에 로컬 설정
+- `.env.example`에 문서화
+
+```bash
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=ISPL Insurance
+```

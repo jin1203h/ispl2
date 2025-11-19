@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API 연결 테스트</title>
+</head>
+<body>
+    <h1>ISPL2 API 연결 테스트</h1>
+    <button onclick="testConnection()">연결 테스트</button>
+    <button onclick="testLogin()">로그인 테스트</button>
+    <div id="result"></div>
+
+    <script>
+        async function testConnection() {
+            const result = document.getElementById('result');
+            result.innerHTML = '연결 테스트 중...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                const data = await response.json();
+                result.innerHTML = `<pre>연결 성공:\n${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<pre>연결 실패:\n${error.message}</pre>`;
+            }
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('result');
+            result.innerHTML = '로그인 테스트 중...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@ispl2.com',
+                        password: 'admin'
+                    })
+                });
+                
+                const data = await response.json();
+                result.innerHTML = `<pre>로그인 응답:\nStatus: ${response.status}\n${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<pre>로그인 실패:\n${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
+

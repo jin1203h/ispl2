@@ -94,6 +94,8 @@ class WorkflowLog(Base):
     output_data = Column(Text)  # JSON 형태로 저장
     error_message = Column(Text)
     execution_time = Column(Integer)  # milliseconds
+    start_time = Column(DateTime)  # 시작 시간
+    end_time = Column(DateTime)    # 종료 시간
     created_at = Column(DateTime, default=func.current_timestamp())
     
     # 제약 조건

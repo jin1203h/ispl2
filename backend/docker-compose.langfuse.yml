@@ -1,0 +1,40 @@
+# Self-hosted LangFuse 설정
+# SSL 인증서 문제 해결을 위한 로컬 LangFuse 서버
+
+version: '3.8'
+
+services:
+  langfuse-server:
+    image: langfuse/langfuse:latest
+    depends_on:
+      - langfuse-db
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=mysecret
+      - SALT=mysalt
+      - NEXTAUTH_URL=http://localhost:3001
+      - TELEMETRY_ENABLED=false
+      - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=false
+
+  langfuse-db:
+    image: postgres:15
+    restart: always
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+volumes:
+  langfuse_db_data:
+    driver: local
+
+
+
+
+

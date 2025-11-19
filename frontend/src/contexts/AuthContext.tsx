@@ -45,26 +45,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
+    console.log('[AuthContext] 로그인 시작:', email);
+    
     try {
       const response = await apiService.login({ email, password });
+      console.log('[AuthContext] API 응답 받음:', { hasToken: !!response.access_token, user: response.user });
       
       if (response.access_token) {
         localStorage.setItem('auth_token', response.access_token);
         
-        // 사용자 정보 설정
+        // 서버에서 받은 사용자 정보 사용
         const userData: User = {
-          email: email,
-          role: 'admin' // 기본값, 실제로는 서버에서 받아와야 함
+          email: response.user?.email || email,
+          role: response.user?.role || 'admin'
         };
         
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
         setIsAuthenticated(true);
+        
+        console.log('[AuthContext] 로그인 성공:', userData);
       } else {
         throw new Error('로그인 응답에 토큰이 없습니다.');
       }
     } catch (error) {
-      console.error('로그인 실패:', error);
+      console.error('[AuthContext] 로그인 실패:', error);
       throw error;
     }
   };

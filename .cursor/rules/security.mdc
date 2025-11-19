@@ -1,0 +1,509 @@
+---
+alwaysApply: true
+---
+# 보안 가이드
+
+## 일반 보안 원칙
+
+### 민감 정보 관리
+1. **절대 코드에 하드코딩 금지**
+   - API 키, 비밀번호, 토큰 등
+   - 환경 변수로 관리
+
+2. **환경 변수 사용**
+   ```python
+   # backend/.env
+   OPENAI_API_KEY=sk-...
+   DATABASE_URL=postgresql://...
+   SECRET_KEY=랜덤한-긴-문자열
+   ```
+
+3. **.gitignore에 추가**
+   ```
+   .env
+   .env.local
+   *.key
+   *.pem
+   secrets/
+   ```
+
+## 인증 (Authentication)
+
+### JWT 토큰
+- **알고리즘**: HS256 또는 RS256
+- **유효기간**: Access Token 15분~1시간, Refresh Token 7~30일
+- **서명 키**: 충분히 긴 랜덤 문자열 (최소 32자)
+
+```python
+# backend/services/auth.py
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+```
+
+### 비밀번호 처리
+- **해싱**: bcrypt 사용 (NEVER plain text or MD5/SHA1)
+- **Salt**: bcrypt 자동 처리
+- **복잡도**: 최소 8자, 영문+숫자+특수문자 권장
+
+```python
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+```
+
+### 세션 관리
+- 로그아웃 시 토큰 무효화
+- 클라이언트에서 localStorage 대신 httpOnly 쿠키 사용 고려
+- CSRF 토큰 사용
+
+## 인가 (Authorization)
+
+### 역할 기반 접근 제어 (RBAC)
+```python
+from enum import Enum
+from fastapi import Depends, HTTPException
+
+class Role(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+
+def require_role(required_role: Role):
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role != required_role:
+            raise HTTPException(status_code=403, detail="권한이 없습니다")
+        return current_user
+    return role_checker
+
+# 사용
+@router.delete("/policies/{id}")
+async def delete_policy(
+    id: int,
+    current_user: User = Depends(require_role(Role.ADMIN))
+):
+    # 관리자만 삭제 가능
+    pass
+```
+
+### 리소스 소유권 확인
+```python
+async def delete_policy(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    policy = await db.get(Policy, id)
+    if not policy:
+        raise HTTPException(status_code=404)
+    
+    # 소유자 또는 관리자만 삭제 가능
+    if policy.user_id != current_user.id and current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="권한이 없습니다")
+    
+    await db.delete(policy)
+    await db.commit()
+```
+
+## API 보안
+
+### CORS 설정
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+# 개발 환경
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 프로덕션 환경
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://yourdomain.com"],  # 특정 도메인만
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+)
+```
+
+### Rate Limiting
+```python
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
+
+@router.post("/search")
+@limiter.limit("10/minute")  # 분당 10회 제한
+async def search(request: Request, query: str):
+    pass
+```
+
+### 입력 검증
+```python
+from pydantic import BaseModel, EmailStr, validator, Field
+
+class UserCreate(BaseModel):
+    email: EmailStr  # 이메일 형식 자동 검증
+    password: str = Field(..., min_length=8, max_length=100)
+    
+    @validator('password')
+    def validate_password_strength(cls, v):
+        if not any(c.isupper() for c in v):
+            raise ValueError('비밀번호는 대문자를 포함해야 합니다')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('비밀번호는 숫자를 포함해야 합니다')
+        return v
+
+# 쿼리 파라미터 검증
+@router.get("/policies")
+async def get_policies(
+    skip: int = Query(0, ge=0),  # 0 이상
+    limit: int = Query(10, ge=1, le=100),  # 1~100 사이
+):
+    pass
+```
+
+### SQL Injection 방지
+- SQLAlchemy ORM 사용 (자동으로 파라미터 바인딩)
+- Raw SQL 사용 시 파라미터 바인딩 필수
+
+```python
+# 안전한 방법
+from sqlalchemy import text
+
+query = text("SELECT * FROM users WHERE email = :email")
+result = await db.execute(query, {"email": user_email})
+
+# 위험한 방법 (절대 사용 금지)
+query = f"SELECT * FROM users WHERE email = '{user_email}'"
+```
+
+### XSS 방지
+- 프론트엔드에서 사용자 입력 이스케이프
+- React는 기본적으로 XSS 방지 (dangerouslySetInnerHTML 사용 주의)
+
+```typescript
+// 안전 (React 기본 동작)
+<div>{userInput}</div>
+
+// 위험 (반드시 필요한 경우만)
+<div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />
+
+// DOMPurify 사용
+import DOMPurify from 'dompurify';
+const sanitized = DOMPurify.sanitize(userInput);
+```
+
+## 파일 업로드 보안
+
+### 파일 타입 검증
+```python
+from fastapi import UploadFile, HTTPException
+
+ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+async def validate_file(file: UploadFile):
+    # 확장자 확인
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"허용되지 않는 파일 형식입니다. 허용: {ALLOWED_EXTENSIONS}"
+        )
+    
+    # 파일 크기 확인
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="파일이 너무 큽니다 (최대 10MB)")
+    
+    await file.seek(0)  # 포인터 초기화
+    return file
+```
+
+### 파일명 처리
+```python
+import uuid
+from pathlib import Path
+
+def safe_filename(original_filename: str) -> str:
+    """안전한 파일명 생성"""
+    ext = Path(original_filename).suffix.lower()
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    return unique_name
+
+# 사용
+@router.post("/upload")
+async def upload_file(file: UploadFile):
+    file = await validate_file(file)
+    safe_name = safe_filename(file.filename)
+    file_path = f"uploads/{safe_name}"
+    
+    with open(file_path, "wb") as f:
+        contents = await file.read()
+        f.write(contents)
+```
+
+### 파일 저장 위치
+- 웹 루트 밖에 저장
+- 실행 권한 제거
+- 전용 스토리지 서비스 사용 (S3 등)
+
+## 데이터베이스 보안
+
+### 연결 보안
+```python
+# SSL 사용
+DATABASE_URL = "postgresql+asyncpg://user:pass@host:5432/db?ssl=require"
+
+# 연결 타임아웃
+from sqlalchemy.pool import QueuePool
+
+engine = create_async_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    connect_args={
+        "timeout": 30,
+        "ssl": {"require": True}
+    }
+)
+```
+
+### 최소 권한 원칙
+```sql
+-- 애플리케이션용 사용자 생성 (제한된 권한)
+CREATE USER app_user WITH PASSWORD 'strong_password';
+
+-- 필요한 테이블에만 권한 부여
+GRANT SELECT, INSERT, UPDATE, DELETE ON policies TO app_user;
+GRANT SELECT, INSERT ON embeddings TO app_user;
+
+-- SUPERUSER 권한 부여 금지
+```
+
+### 데이터 암호화
+```python
+from cryptography.fernet import Fernet
+
+# 암호화 키 (환경 변수로 관리)
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+cipher = Fernet(ENCRYPTION_KEY)
+
+def encrypt_sensitive_data(data: str) -> str:
+    return cipher.encrypt(data.encode()).decode()
+
+def decrypt_sensitive_data(encrypted_data: str) -> str:
+    return cipher.decrypt(encrypted_data.encode()).decode()
+```
+
+## 프론트엔드 보안
+
+### 토큰 저장
+```typescript
+// localStorage (XSS 취약)
+localStorage.setItem('token', token);  // 가능하면 피하기
+
+// httpOnly 쿠키 (권장)
+// 백엔드에서 Set-Cookie 헤더로 설정
+// JavaScript에서 접근 불가 -> XSS 방지
+```
+
+### API 호출 보안
+```typescript
+// services/api.ts
+import axios from 'axios';
+
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,  // 쿠키 포함
+  timeout: 10000,
+});
+
+// 요청 인터셉터
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// 응답 인터셉터 (토큰 만료 처리)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // 로그아웃 처리
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+### 환경 변수
+```bash
+# .env.local (클라이언트 노출됨 - 민감하지 않은 정보만)
+NEXT_PUBLIC_API_URL=https://api.example.com
+
+# 서버 사이드 전용 (NEXT_PUBLIC_ 접두사 없음)
+SECRET_API_KEY=...
+```
+
+## 로깅 및 모니터링
+
+### 보안 이벤트 로깅
+```python
+import structlog
+
+logger = structlog.get_logger()
+
+# 로그인 실패
+logger.warning(
+    "login_failed",
+    email=email,
+    ip_address=request.client.host,
+    user_agent=request.headers.get("user-agent")
+)
+
+# 권한 없는 접근 시도
+logger.warning(
+    "unauthorized_access",
+    user_id=current_user.id,
+    resource=resource_id,
+    action=action
+)
+```
+
+### 민감 정보 로깅 금지
+```python
+# 나쁜 예
+logger.info(f"User logged in: {email}, password: {password}")
+
+# 좋은 예
+logger.info(f"User logged in: {email}")
+
+# 토큰 일부만 로깅
+token_preview = token[:10] + "..." if len(token) > 10 else token
+logger.info(f"Token issued: {token_preview}")
+```
+
+## HTTPS/SSL
+
+### 프로덕션 필수 사항
+- 모든 통신은 HTTPS
+- SSL/TLS 인증서 (Let's Encrypt 무료)
+- HSTS 헤더 설정
+
+```python
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+
+# HTTPS 강제
+app.add_middleware(HTTPSRedirectMiddleware)
+
+# 허용된 호스트만
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["yourdomain.com", "*.yourdomain.com"]
+)
+```
+
+## 의존성 보안
+
+### 정기적 업데이트
+```bash
+# Python 의존성 취약점 검사
+pip install safety
+safety check
+
+# 업데이트
+pip list --outdated
+pip install --upgrade <package>
+
+# Node.js 의존성 검사
+npm audit
+npm audit fix
+```
+
+### 신뢰할 수 있는 소스만 사용
+- 공식 패키지 레지스트리 (PyPI, npm)
+- 검증된 라이브러리
+- 라이선스 확인
+
+## 에러 처리
+
+### 정보 노출 방지
+```python
+from fastapi import HTTPException
+
+# 나쁜 예 (내부 정보 노출)
+@router.get("/user/{id}")
+async def get_user(id: int):
+    try:
+        user = await db.get(User, id)
+        return user
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))  # 스택 트레이스 노출
+
+# 좋은 예
+@router.get("/user/{id}")
+async def get_user(id: int):
+    try:
+        user = await db.get(User, id)
+        if not user:
+            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_user_error", error=str(e), user_id=id)
+        raise HTTPException(status_code=500, detail="서버 오류가 발생했습니다")
+```
+
+## 보안 체크리스트
+
+### 배포 전 확인사항
+- [ ] 모든 민감 정보가 환경 변수로 관리됨
+- [ ] `.env` 파일이 `.gitignore`에 포함됨
+- [ ] HTTPS 설정 완료
+- [ ] CORS 설정이 프로덕션 도메인으로 제한됨
+- [ ] Rate limiting 적용됨
+- [ ] 파일 업로드 검증 구현됨
+- [ ] SQL Injection 방지 확인
+- [ ] XSS 방지 확인
+- [ ] 인증/인가 로직 테스트 완료
+- [ ] 의존성 취약점 검사 완료
+- [ ] 에러 메시지에서 민감 정보 제거됨
+- [ ] 보안 이벤트 로깅 설정됨
+- [ ] 정기 백업 설정됨

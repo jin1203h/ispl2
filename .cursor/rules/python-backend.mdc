@@ -1,0 +1,203 @@
+---
+globs: backend/**/*.py
+description: Python 백엔드 코딩 규칙 및 FastAPI 베스트 프랙티스
+---
+# Python/FastAPI 백엔드 코딩 규칙
+
+## 코드 스타일
+
+### 포맷팅
+- **Formatter**: Black (line-length: 88)
+- **Linter**: Flake8
+- **Import 순서**: 표준 라이브러리 → 서드파티 → 로컬 모듈
+- **타입 힌트**: 모든 함수와 메서드에 타입 힌트 사용
+
+```python
+from typing import List, Optional
+from datetime import datetime
+
+async def get_policies(
+    skip: int = 0,
+    limit: int = 10,
+    user_id: Optional[int] = None
+) -> List[PolicySchema]:
+    """약관 목록을 조회합니다."""
+    pass
+```
+
+### 네이밍 컨벤션
+- **함수/변수**: `snake_case`
+- **클래스**: `PascalCase`
+- **상수**: `UPPER_SNAKE_CASE`
+- **Private 메서드**: `_leading_underscore`
+
+## FastAPI 패턴
+
+### 라우터 구조
+```python
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+router = APIRouter(prefix="/api", tags=["category"])
+
+@router.get("/endpoint")
+async def handler(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """명확한 docstring 작성"""
+    pass
+```
+
+### 의존성 주입 (Dependency Injection)
+- `Depends()`를 사용한 의존성 주입
+- 데이터베이스 세션: `db: AsyncSession = Depends(get_db)`
+- 인증 사용자: `current_user: User = Depends(get_current_user)`
+- 권한 체크: `Depends(require_admin)` 등 커스텀 의존성 사용
+
+### 에러 핸들링
+```python
+from fastapi import HTTPException, status
+
+if not resource:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="리소스를 찾을 수 없습니다"
+    )
+```
+
+## 데이터베이스
+
+### SQLAlchemy 모델
+- `backend/models/database.py`에 ORM 모델 정의
+- Async SQLAlchemy 2.0 스타일 사용
+- 관계는 `relationship()`으로 정의
+
+### 쿼리 패턴
+```python
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def get_items(db: AsyncSession):
+    result = await db.execute(select(Item))
+    return result.scalars().all()
+```
+
+## Pydantic 스키마
+
+### 스키마 정의
+- `backend/models/schemas.py`에 정의
+- Request/Response 스키마 분리
+- `Config` 클래스로 ORM 모드 활성화
+
+```python
+from pydantic import BaseModel, ConfigDict
+
+class PolicyBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+class PolicyCreate(PolicyBase):
+    pass
+
+class PolicyResponse(PolicyBase):
+    id: int
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+```
+
+## LangChain/LangGraph 에이전트
+
+### 에이전트 구현
+- `backend/agents/` 디렉토리에 구현
+- `base.py`의 BaseAgent 상속
+- 각 에이전트는 단일 책임 원칙 준수
+
+```python
+from .base import BaseAgent
+
+class CustomAgent(BaseAgent):
+    async def process(self, input_data):
+        """처리 로직 구현"""
+        pass
+```
+
+### 워크플로우
+- `supervisor.py`에서 에이전트 오케스트레이션
+- LangGraph로 에이전트 체인 구성
+- 각 단계별 로깅 및 모니터링 추가
+
+## 테스트
+
+### 테스트 파일 명명
+- `test_*.py` 형식 사용
+- 테스트 대상과 동일한 이름: `test_auth.py`, `test_policies.py`
+
+### Pytest 사용
+```python
+import pytest
+from httpx import AsyncClient
+
+@pytest.mark.asyncio
+async def test_endpoint(client: AsyncClient):
+    response = await client.get("/api/endpoint")
+    assert response.status_code == 200
+```
+
+## 보안
+
+### 인증
+- JWT 토큰 기반 인증 사용
+- 민감한 정보는 환경 변수로 관리
+- 비밀번호는 bcrypt로 해싱
+
+### CORS
+- 프로덕션 환경에서는 특정 도메인만 허용
+- 개발 환경에서만 `allow_origins=["*"]`
+
+## 로깅 및 모니터링
+
+### 구조화된 로깅
+- `structlog` 사용
+- 중요한 작업에 로그 추가
+- 에러 시 스택 트레이스 포함
+
+### Langfuse 통합
+- AI 워크플로우 추적
+- 성능 메트릭 수집
+- `backend/utils/performance_monitor.py` 활용
+
+## 비동기 프로그래밍
+
+### async/await 사용
+- I/O 바운드 작업에 async 사용
+- 데이터베이스 쿼리는 항상 await
+- 외부 API 호출 시 httpx 라이브러리 사용
+
+```python
+import httpx
+
+async def call_external_api():
+    async with httpx.AsyncClient() as client:
+        response = await client.get("https://api.example.com")
+        return response.json()
+```
+
+## 환경 변수
+
+### 설정 관리
+- `pydantic-settings` 사용
+- `.env` 파일로 로컬 설정
+- `env.example`에 필수 변수 문서화
+
+```python
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    database_url: str
+    openai_api_key: str
+    
+    class Config:
+        env_file = ".env"
+```

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiService } from '@/services/api';
 
 interface WorkflowExecution {
   id: string;
@@ -27,9 +28,102 @@ interface AgentExecution {
 export default function WorkflowMonitoring() {
   const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
   const [filter, setFilter] = useState<'all' | 'running' | 'completed' | 'failed'>('all');
+  const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Mock 데이터
-  const mockExecutions: WorkflowExecution[] = [
+  // 실제 워크플로우 데이터 가져오기
+  const fetchWorkflowData = async () => {
+    try {
+      setError(null);
+      
+      // 워크플로우 실행 목록 가져오기
+      const response = await apiService.getWorkflowExecutions();
+      
+      if (response.success && response.data.workflow_executions) {
+        // 백엔드 데이터를 프론트엔드 형식으로 변환
+        const transformedExecutions: WorkflowExecution[] = response.data.workflow_executions.map((workflow: any, index: number) => ({
+          id: workflow.workflow_id || `workflow-${index}`,
+          documentName: workflow.document_name || `문서-${index + 1}`,
+          status: mapWorkflowStatus(workflow.status),
+          progress: calculateProgress(workflow.agents || []),
+          startedAt: workflow.start_time || new Date().toISOString(),
+          completedAt: workflow.end_time,
+          duration: workflow.total_duration,
+          agents: (workflow.agents || []).map((agent: any) => ({
+            agentName: agent.agent_name || agent.name,
+            status: mapAgentStatus(agent.status),
+            startTime: agent.start_time ? new Date(agent.start_time).toLocaleTimeString('ko-KR') : undefined,
+            endTime: agent.end_time ? new Date(agent.end_time).toLocaleTimeString('ko-KR') : undefined,
+            duration: agent.execution_time,
+            inputData: agent.input_data,
+            outputData: agent.output_data,
+            errorMessage: agent.error_message
+          }))
+        }));
+        
+        setExecutions(transformedExecutions);
+      } else {
+        // 백엔드 데이터가 없으면 데모 데이터 사용
+        setExecutions(getDemoExecutions());
+      }
+    } catch (err) {
+      console.error('워크플로우 데이터 가져오기 실패:', err);
+      setError('워크플로우 데이터를 불러오는데 실패했습니다.');
+      // 오류 시 데모 데이터 사용
+      setExecutions(getDemoExecutions());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 상태 매핑 함수들
+  const mapWorkflowStatus = (status: string): 'pending' | 'running' | 'completed' | 'failed' => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+      case 'success':
+        return 'completed';
+      case 'running':
+      case 'processing':
+      case 'in_progress':
+        return 'running';
+      case 'failed':
+      case 'error':
+        return 'failed';
+      default:
+        return 'pending';
+    }
+  };
+
+  const mapAgentStatus = (status: string): 'pending' | 'running' | 'completed' | 'failed' => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+      case 'success':
+        return 'completed';
+      case 'running':
+      case 'processing':
+        return 'running';
+      case 'failed':
+      case 'error':
+        return 'failed';
+      default:
+        return 'pending';
+    }
+  };
+
+  const calculateProgress = (agents: any[]): number => {
+    if (!agents || agents.length === 0) return 0;
+    
+    const completedAgents = agents.filter(agent => 
+      agent.status === 'completed' || agent.status === 'success'
+    ).length;
+    
+    return Math.round((completedAgents / agents.length) * 100);
+  };
+
+  // 데모 데이터 (백엔드 연결 실패 시 사용)
+  const getDemoExecutions = (): WorkflowExecution[] => [
     {
       id: 'exec-001',
       documentName: '삼성생명_암보험약관.pdf',
@@ -136,7 +230,22 @@ export default function WorkflowMonitoring() {
     }
   ];
 
-  const filteredExecutions = mockExecutions.filter(exec => 
+  // useEffect로 데이터 가져오기 및 자동 새로고침 설정
+  useEffect(() => {
+    fetchWorkflowData();
+
+    // 자동 새로고침 설정 (5초마다)
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(fetchWorkflowData, 5000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [autoRefresh]);
+
+  const filteredExecutions = executions.filter(exec => 
     filter === 'all' || exec.status === filter
   );
 
@@ -190,8 +299,29 @@ export default function WorkflowMonitoring() {
               <h1 className="text-xl font-semibold text-gray-900">워크플로우 모니터링</h1>
               <p className="text-sm text-gray-600 mt-1">Multi-Agent 처리 과정을 실시간으로 확인하세요</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">총 {mockExecutions.length}개 실행</span>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`flex items-center space-x-1 px-3 py-1 text-xs rounded ${
+                  autoRefresh 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                <span>{autoRefresh ? '실시간' : '일시정지'}</span>
+              </button>
+              <button
+                onClick={fetchWorkflowData}
+                disabled={loading}
+                className="flex items-center space-x-1 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+              >
+                <svg className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>새로고침</span>
+              </button>
+              <span className="text-sm text-gray-500">총 {executions.length}개 실행</span>
             </div>
           </div>
 
@@ -217,7 +347,43 @@ export default function WorkflowMonitoring() {
 
         {/* 실행 목록 */}
         <div className="overflow-y-auto h-full pb-20">
-          {filteredExecutions.map((execution) => (
+          {loading && executions.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <svg className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <p className="text-gray-600">워크플로우 데이터를 불러오는 중...</p>
+              </div>
+            </div>
+          ) : error && executions.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <svg className="w-8 h-8 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-red-600 mb-4">{error}</p>
+                <button
+                  onClick={fetchWorkflowData}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  다시 시도
+                </button>
+              </div>
+            </div>
+          ) : filteredExecutions.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <svg className="w-8 h-8 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="text-gray-600">
+                  {filter === 'all' ? '실행된 워크플로우가 없습니다.' : `${filter} 상태의 워크플로우가 없습니다.`}
+                </p>
+              </div>
+            </div>
+          ) : (
+            filteredExecutions.map((execution) => (
             <div
               key={execution.id}
               onClick={() => setSelectedExecution(execution)}
@@ -258,15 +424,16 @@ export default function WorkflowMonitoring() {
                 </div>
 
                 {/* 시간 정보 */}
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>시작: {new Date(execution.startedAt).toLocaleTimeString('ko-KR')}</span>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600">시작: <span className="text-gray-900 font-mono">{new Date(execution.startedAt).toLocaleTimeString('ko-KR')}</span></span>
                   {execution.duration && (
-                    <span>소요: {Math.floor(execution.duration / 60)}분 {execution.duration % 60}초</span>
+                    <span className="text-gray-600">소요: <span className="text-blue-600 font-semibold">{Math.floor(execution.duration / 60)}분 {execution.duration % 60}초</span></span>
                   )}
                 </div>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -319,19 +486,19 @@ export default function WorkflowMonitoring() {
                       {agent.startTime && (
                         <div>
                           <span className="text-gray-500">시작 시간:</span>
-                          <span className="ml-2 font-mono">{agent.startTime}</span>
+                          <span className="ml-2 font-mono text-gray-900">{agent.startTime}</span>
                         </div>
                       )}
                       {agent.endTime && (
                         <div>
                           <span className="text-gray-500">종료 시간:</span>
-                          <span className="ml-2 font-mono">{agent.endTime}</span>
+                          <span className="ml-2 font-mono text-gray-900">{agent.endTime}</span>
                         </div>
                       )}
                       {agent.duration && (
                         <div>
                           <span className="text-gray-500">소요 시간:</span>
-                          <span className="ml-2 font-mono">{agent.duration}초</span>
+                          <span className="ml-2 font-mono text-blue-600 font-semibold">{agent.duration}초</span>
                         </div>
                       )}
                     </div>

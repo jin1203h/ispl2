@@ -1,0 +1,479 @@
+---
+globs: backend/models/**/*.py,database/**/*.sql
+description: 데이터베이스 스키마 및 쿼리 작성 규칙
+---
+# 데이터베이스 관리 가이드
+
+## 데이터베이스 스택
+
+### PostgreSQL + pgvector
+- **버전**: PostgreSQL 15+
+- **확장**: pgvector 0.5.0+
+- **목적**: 벡터 유사도 검색 지원
+
+## 스키마 설계 원칙
+
+### 테이블 네이밍
+- **소문자 + 언더스코어**: `users`, `insurance_policies`
+- **복수형 사용**: `policies` (단수 `policy` 아님)
+- **관계 테이블**: `user_policies` (양쪽 테이블명 조합)
+
+### 컬럼 네이밍
+- **소문자 + 언더스코어**: `created_at`, `user_id`
+- **Boolean**: `is_active`, `has_permission`
+- **타임스탬프**: `created_at`, `updated_at`, `deleted_at`
+- **외래키**: `{테이블명}_id` (예: `user_id`, `policy_id`)
+
+### 필수 컬럼
+모든 주요 테이블에 포함:
+```sql
+id SERIAL PRIMARY KEY,
+created_at TIMESTAMP DEFAULT NOW(),
+updated_at TIMESTAMP DEFAULT NOW(),
+deleted_at TIMESTAMP  -- Soft delete용 (선택적)
+```
+
+## SQLAlchemy 모델
+
+### 모델 정의
+```python
+# backend/models/database.py
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from .base import Base
+
+class Policy(Base):
+    __tablename__ = "policies"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    file_path = Column(String(500), nullable=False)
+    
+    # 관계
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="policies")
+    
+    # 타임스탬프
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    def __repr__(self):
+        return f"<Policy(id={self.id}, title='{self.title}')>"
+```
+
+### 관계 정의
+```python
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    
+    # One-to-Many
+    policies = relationship("Policy", back_populates="user")
+    
+class Policy(Base):
+    __tablename__ = "policies"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    
+    # Many-to-One
+    user = relationship("User", back_populates="policies")
+```
+
+### 인덱스 추가
+```python
+from sqlalchemy import Index
+
+class Policy(Base):
+    __tablename__ = "policies"
+    
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255))
+    category = Column(String(100))
+    created_at = Column(DateTime)
+    
+    # 복합 인덱스
+    __table_args__ = (
+        Index('idx_policy_category_date', 'category', 'created_at'),
+    )
+```
+
+## pgvector 사용
+
+### 벡터 컬럼 정의
+```python
+from pgvector.sqlalchemy import Vector
+
+class Embedding(Base):
+    __tablename__ = "embeddings"
+    
+    id = Column(Integer, primary_key=True)
+    policy_id = Column(Integer, ForeignKey("policies.id"))
+    chunk_text = Column(Text, nullable=False)
+    
+    # 1536차원 벡터 (OpenAI embedding)
+    embedding = Column(Vector(1536), nullable=False)
+    
+    metadata = Column(JSON)  # 추가 메타데이터
+```
+
+### 벡터 인덱스
+```sql
+-- HNSW 인덱스 (빠른 근사 검색)
+CREATE INDEX embeddings_embedding_idx ON embeddings 
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+-- IVFFlat 인덱스 (메모리 효율적)
+CREATE INDEX embeddings_embedding_ivf_idx ON embeddings 
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+```
+
+### 유사도 검색 쿼리
+```python
+from sqlalchemy import select, text
+
+# 코사인 유사도
+async def search_by_cosine_similarity(
+    db: AsyncSession,
+    query_embedding: List[float],
+    limit: int = 10
+):
+    query = select(Embedding).order_by(
+        Embedding.embedding.cosine_distance(query_embedding)
+    ).limit(limit)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+# L2 거리
+async def search_by_l2_distance(
+    db: AsyncSession,
+    query_embedding: List[float],
+    limit: int = 10
+):
+    query = select(Embedding).order_by(
+        Embedding.embedding.l2_distance(query_embedding)
+    ).limit(limit)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+# 내적 (Inner Product)
+async def search_by_inner_product(
+    db: AsyncSession,
+    query_embedding: List[float],
+    limit: int = 10
+):
+    query = select(Embedding).order_by(
+        Embedding.embedding.max_inner_product(query_embedding)
+    ).limit(limit)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+```
+
+## 마이그레이션
+
+### Alembic 사용 (권장)
+```bash
+# Alembic 초기화
+cd backend
+alembic init alembic
+
+# 마이그레이션 생성
+alembic revision --autogenerate -m "Add policies table"
+
+# 마이그레이션 적용
+alembic upgrade head
+
+# 롤백
+alembic downgrade -1
+```
+
+### 마이그레이션 파일
+```python
+# alembic/versions/xxx_add_policies_table.py
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade():
+    op.create_table(
+        'policies',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('title', sa.String(255), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now())
+    )
+    
+    op.create_index('idx_policies_title', 'policies', ['title'])
+
+def downgrade():
+    op.drop_index('idx_policies_title')
+    op.drop_table('policies')
+```
+
+## 쿼리 최적화
+
+### N+1 문제 해결
+```python
+from sqlalchemy.orm import selectinload, joinedload
+
+# 즉시 로딩 (Eager Loading)
+async def get_policies_with_user(db: AsyncSession):
+    query = select(Policy).options(
+        selectinload(Policy.user)  # 별도 쿼리로 로드
+    )
+    result = await db.execute(query)
+    return result.scalars().all()
+
+# Join 로딩
+async def get_policies_with_user_joined(db: AsyncSession):
+    query = select(Policy).options(
+        joinedload(Policy.user)  # JOIN으로 한 번에 로드
+    )
+    result = await db.execute(query)
+    return result.unique().scalars().all()  # 중복 제거
+```
+
+### 페이지네이션
+```python
+async def get_policies_paginated(
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 10
+):
+    query = select(Policy).offset(skip).limit(limit)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+# 총 개수와 함께
+from sqlalchemy import func, select
+
+async def get_policies_with_count(
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 10
+):
+    # 총 개수
+    count_query = select(func.count(Policy.id))
+    total = await db.execute(count_query)
+    total_count = total.scalar()
+    
+    # 데이터
+    query = select(Policy).offset(skip).limit(limit)
+    result = await db.execute(query)
+    items = result.scalars().all()
+    
+    return {"items": items, "total": total_count}
+```
+
+### 필터링
+```python
+from sqlalchemy import and_, or_
+
+async def search_policies(
+    db: AsyncSession,
+    title: Optional[str] = None,
+    user_id: Optional[int] = None,
+):
+    query = select(Policy)
+    
+    conditions = []
+    if title:
+        conditions.append(Policy.title.ilike(f"%{title}%"))
+    if user_id:
+        conditions.append(Policy.user_id == user_id)
+    
+    if conditions:
+        query = query.where(and_(*conditions))
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+```
+
+## 트랜잭션 관리
+
+### 자동 커밋
+```python
+async def create_policy(db: AsyncSession, policy_data: dict):
+    policy = Policy(**policy_data)
+    db.add(policy)
+    await db.commit()
+    await db.refresh(policy)
+    return policy
+```
+
+### 수동 트랜잭션
+```python
+async def create_policy_with_embeddings(
+    db: AsyncSession,
+    policy_data: dict,
+    embeddings_data: List[dict]
+):
+    try:
+        # Policy 생성
+        policy = Policy(**policy_data)
+        db.add(policy)
+        await db.flush()  # ID 생성하지만 커밋 안 함
+        
+        # Embeddings 생성
+        for emb_data in embeddings_data:
+            embedding = Embedding(policy_id=policy.id, **emb_data)
+            db.add(embedding)
+        
+        await db.commit()
+        return policy
+        
+    except Exception as e:
+        await db.rollback()
+        raise
+```
+
+### Savepoint 사용
+```python
+async def complex_operation(db: AsyncSession):
+    async with db.begin_nested():  # Savepoint
+        # 작업 1
+        policy = Policy(title="test")
+        db.add(policy)
+        
+        # 실패할 수 있는 작업
+        if some_condition:
+            raise ValueError("조건 미충족")
+    
+    # 여기까지 오면 Savepoint 커밋됨
+    await db.commit()
+```
+
+## 성능 모니터링
+
+### 쿼리 로깅
+```python
+import logging
+
+# SQLAlchemy 쿼리 로깅
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+# 느린 쿼리 감지
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import time
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault('query_start_time', []).append(time.time())
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.time() - conn.info['query_start_time'].pop(-1)
+    if total > 1.0:  # 1초 이상 걸린 쿼리
+        logger.warning(f"Slow query ({total:.2f}s): {statement}")
+```
+
+### EXPLAIN 분석
+```python
+from sqlalchemy import text
+
+async def analyze_query(db: AsyncSession):
+    query = text("""
+        EXPLAIN ANALYZE
+        SELECT * FROM embeddings
+        ORDER BY embedding <=> :vector
+        LIMIT 10
+    """)
+    
+    result = await db.execute(query, {"vector": [0.1] * 1536})
+    for row in result:
+        print(row)
+```
+
+## 백업 및 복원
+
+### pg_dump 사용
+```bash
+# 전체 백업
+pg_dump -U postgres -d ispl_db > backup.sql
+
+# 특정 테이블만
+pg_dump -U postgres -d ispl_db -t policies > policies_backup.sql
+
+# 복원
+psql -U postgres -d ispl_db < backup.sql
+```
+
+### 자동 백업 스크립트
+```bash
+#!/bin/bash
+# backup.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/backups"
+DB_NAME="ispl_db"
+
+pg_dump -U postgres $DB_NAME | gzip > $BACKUP_DIR/backup_$DATE.sql.gz
+
+# 30일 이상 된 백업 삭제
+find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +30 -delete
+```
+
+## 보안
+
+### SQL Injection 방지
+- **파라미터 바인딩 사용** (SQLAlchemy ORM 사용 시 자동)
+- 절대 문자열 포맷팅으로 쿼리 생성 금지
+
+```python
+# 나쁜 예 (SQL Injection 취약)
+query = f"SELECT * FROM users WHERE email = '{email}'"
+
+# 좋은 예 (안전)
+query = select(User).where(User.email == email)
+
+# Raw SQL 사용 시
+query = text("SELECT * FROM users WHERE email = :email")
+result = await db.execute(query, {"email": email})
+```
+
+### 민감 데이터 암호화
+- 비밀번호는 bcrypt로 해싱
+- 개인정보는 암호화 저장 고려
+- 데이터베이스 연결 시 SSL 사용
+
+```python
+# settings.py
+DATABASE_URL = "postgresql+asyncpg://user:pass@localhost:5432/db?ssl=require"
+```
+
+## 연결 풀 관리
+
+### 설정
+```python
+from sqlalchemy.ext.asyncio import create_async_engine
+
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_size=20,           # 최대 연결 수
+    max_overflow=0,         # 추가 연결 허용 안 함
+    pool_timeout=30,        # 연결 대기 타임아웃
+    pool_recycle=3600,      # 1시간마다 연결 재생성
+    pool_pre_ping=True,     # 연결 유효성 사전 확인
+)
+```
+
+### 연결 모니터링
+```python
+async def get_pool_status(engine):
+    pool = engine.pool
+    return {
+        "size": pool.size(),
+        "checked_in": pool.checkedin(),
+        "checked_out": pool.checkedout(),
+        "overflow": pool.overflow(),
+    }
+```

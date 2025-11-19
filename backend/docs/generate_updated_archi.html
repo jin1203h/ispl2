@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ISPL2 Updated Architecture SVG Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'trebuchet ms', verdana, arial, sans-serif;
+            margin: 20px;
+            background-color: #191919;
+            color: #cccccc;
+        }
+        .container {
+            max-width: none;
+            width: 100%;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background-color: #191919;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        #download-btn {
+            margin: 20px;
+            padding: 10px 20px;
+            background-color: #4fc3f7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #instructions {
+            margin: 20px;
+            padding: 15px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            color: #cccccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        <h3>📋 SVG 생성 안내</h3>
+        <p>1. 다이어그램이 렌더링될 때까지 잠시 기다려주세요.</p>
+        <p>2. 개발자 도구(F12)를 열고 Elements 탭으로 이동합니다.</p>
+        <p>3. <code>&lt;svg&gt;</code> 요소를 찾아 우클릭 → "Copy element"를 선택합니다.</p>
+        <p>4. 텍스트 에디터에 붙여넣기하고 <code>archi.svg</code> 파일로 저장합니다.</p>
+    </div>
+
+    <div class="container">
+        <div class="mermaid">
+%%{init: {'theme':'dark', 'themeVariables': {
+  'primaryColor': '#191919',
+  'primaryTextColor': 'rgba(204, 204, 204, 0.87)',
+  'primaryBorderColor': '#242424',
+  'lineColor': 'rgba(204, 204, 204, 0.87)',
+  'secondaryColor': 'rgba(64, 64, 64, 0.47)',
+  'tertiaryColor': '#4b5563',
+  'background': '#191919',
+  'mainBkg': '#191919',
+  'secondaryBkg': '#404040',
+  'tertiaryBkg': '#4b5563'
+}}}%%
+
+flowchart TD
+    %% 프론트엔드 레이어
+    subgraph Frontend ["🖥️ 프론트엔드 레이어 (React + Next.js + TypeScript)"]
+        subgraph ReactComponents ["React 컴포넌트"]
+            Chat["💬 ChatInterface<br/>AI 채팅 인터페이스"]
+            Policy["📄 PolicyManagement<br/>약관 관리"]
+            Workflow["📊 WorkflowMonitoring<br/>워크플로우 모니터링"]
+            Dashboard["📈 PerformanceDashboard<br/>성능 대시보드"]
+            Auth["🔐 Login<br/>사용자 인증"]
+        end
+        
+        APIClient["🔌 API Client<br/>services/api.ts<br/>HTTP 통신"]
+        AuthContext["👤 AuthContext<br/>인증 상태 관리"]
+    end
+    
+    %% 백엔드 레이어
+    subgraph Backend ["⚙️ 백엔드 레이어 (FastAPI + Python)"]
+        subgraph APIRouters ["🚀 API 라우터"]
+            AuthRouter["🔑 인증 API<br/>/auth/*"]
+            PolicyRouter["📋 약관 관리 API<br/>/policies/*"]
+            SearchRouter["🔍 검색 API<br/>/search/*"]
+            WorkflowRouter["📈 워크플로우 API<br/>/workflow/*"]
+            DashboardRouter["📊 대시보드 API<br/>/dashboard/*"]
+        end
+        
+        subgraph Services ["🛠️ 서비스 레이어"]
+            AuthService["🔐 인증 서비스<br/>JWT 토큰 관리"]
+            DBService["💾 데이터베이스 서비스<br/>SQLAlchemy ORM"]
+            VectorService["🗂️ 벡터 저장소 서비스<br/>pgvector 연동"]
+            PerformanceService["📊 성능 수집 서비스<br/>메트릭 수집"]
+            WorkflowLogger["📋 워크플로우 로거<br/>실행 로그 관리"]
+        end
+    end
+    
+    %% Multi-Agent 시스템
+    subgraph AgentSystem ["🤖 Multi-Agent 시스템 (LangGraph)"]
+        Supervisor["🎯 Supervisor Agent<br/>워크플로우 조율"]
+        
+        subgraph ProcessingAgents ["문서 처리 에이전트"]
+            PDFAgent["📄 PDF Processor<br/>PDF 구조 분석"]
+            TextAgent["📝 Text Processor<br/>텍스트 추출/정제"]
+            TableAgent["📊 Table Processor<br/>표 데이터 구조화"]
+            ImageAgent["🖼️ Image Processor<br/>OCR/이미지 분석"]
+            MarkdownAgent["📝 Markdown Processor<br/>마크다운 변환"]
+        end
+        
+        subgraph RAGAgents ["RAG 검색 에이전트"]
+            QueryProcessor["🔍 Query Processor<br/>질의 전처리"]
+            SearchEngine["🔎 Advanced Search Engine<br/>하이브리드 검색"]
+            ResultService["📋 Result Service<br/>결과 후처리"]
+            AnswerService["🤖 Answer Service<br/>LLM 답변 생성"]
+        end
+        
+        subgraph EmbeddingAgents ["임베딩 에이전트"]
+            EmbedAgent["🧠 Embedding Agent<br/>임베딩 생성"]
+            VectorAgent["🗂️ VectorStore Agent<br/>pgvector 저장"]
+        end
+    end
+    
+    %% 데이터베이스 레이어
+    subgraph Database ["🗄️ 데이터베이스 레이어 (PostgreSQL + pgvector)"]
+        subgraph CoreTables ["📊 핵심 테이블"]
+            Users["👥 users<br/>사용자 정보"]
+            Policies["📑 policies<br/>약관 메타데이터"]
+            WorkflowLogs["📋 workflow_logs<br/>워크플로우 실행 로그"]
+        end
+        
+        subgraph VectorTables ["🧠 벡터 테이블"]
+            Embeddings1["🧠 embeddings_text_embedding_3<br/>3072차원 벡터"]
+            Embeddings2["🧠 embeddings_qwen<br/>4096차원 벡터"]
+        end
+        
+        VectorDB["🔍 pgvector<br/>벡터 인덱스 검색<br/>HNSW, IVFFlat"]
+    end
+    
+    %% 외부 서비스
+    subgraph External ["🌐 외부 서비스"]
+        OpenAI["🤖 OpenAI API<br/>GPT-4, text-embedding-3"]
+        LangFuse["📊 LangFuse<br/>워크플로우 모니터링"]
+        MCP["🔗 MCP Protocol<br/>자동 Tool 호출"]
+    end
+    
+    %% 프론트엔드 내부 연결
+    Chat --> APIClient
+    Policy --> APIClient
+    Workflow --> APIClient
+    Dashboard --> APIClient
+    Auth --> APIClient
+    
+    APIClient --> AuthRouter
+    APIClient --> PolicyRouter
+    APIClient --> SearchRouter
+    APIClient --> WorkflowRouter
+    APIClient --> DashboardRouter
+    
+    %% 백엔드 서비스 연결
+    AuthRouter --> AuthService
+    PolicyRouter --> DBService
+    DashboardRouter --> PerformanceService
+    WorkflowRouter --> WorkflowLogger
+    
+    %% 핵심 Multi-Agent 연결
+    PolicyRouter ==> Supervisor
+    SearchRouter ==> QueryProcessor
+    
+    %% Multi-Agent 내부 플로우
+    Supervisor --> PDFAgent
+    Supervisor --> TextAgent
+    Supervisor --> TableAgent
+    Supervisor --> ImageAgent
+    Supervisor --> MarkdownAgent
+    Supervisor --> EmbedAgent
+    Supervisor --> VectorAgent
+    
+    %% RAG 검색 플로우
+    QueryProcessor --> SearchEngine
+    SearchEngine --> ResultService
+    ResultService --> AnswerService
+    SearchEngine --> VectorDB
+    
+    %% 데이터베이스 연결
+    DBService --> Users
+    DBService --> Policies
+    AuthService --> Users
+    WorkflowLogger --> WorkflowLogs
+    
+    VectorAgent --> Embeddings1
+    VectorAgent --> Embeddings2
+    VectorAgent --> VectorDB
+    
+    %% 외부 서비스 연결
+    EmbedAgent --> OpenAI
+    AnswerService --> OpenAI
+    Supervisor --> LangFuse
+    Chat --> MCP
+    
+    %% 스타일링 (기존 archi.svg와 동일한 색상)
+    classDef frontend fill:#0d47a1,stroke:#01579b,stroke-width:2px,color:#ffffff
+    classDef backend fill:#1b5e20,stroke:#2e7d32,stroke-width:2px,color:#ffffff
+    classDef agent fill:#b71c1c,stroke:#d32f2f,stroke-width:2px,color:#ffffff
+    classDef database fill:#e65100,stroke:#ff8f00,stroke-width:2px,color:#ffffff
+    classDef external fill:#4a148c,stroke:#6a1b9a,stroke-width:2px,color:#ffffff
+    
+    class Chat,Policy,Workflow,Dashboard,Auth,APIClient,AuthContext frontend
+    class AuthRouter,PolicyRouter,SearchRouter,WorkflowRouter,DashboardRouter,AuthService,DBService,VectorService,PerformanceService,WorkflowLogger backend
+    class Supervisor,PDFAgent,TextAgent,TableAgent,ImageAgent,MarkdownAgent,EmbedAgent,VectorAgent,QueryProcessor,SearchEngine,ResultService,AnswerService agent
+    class Users,Policies,WorkflowLogs,Embeddings1,Embeddings2,VectorDB database
+    class OpenAI,LangFuse,MCP external
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+        
+        // 다이어그램 렌더링 후 안내 메시지
+        setTimeout(() => {
+            const svg = document.querySelector('.mermaid svg');
+            if (svg) {
+                console.log('✅ SVG 다이어그램이 성공적으로 생성되었습니다!');
+                console.log('📋 개발자 도구에서 <svg> 요소를 복사하여 archi.svg 파일로 저장하세요.');
+                
+                // SVG에 올바른 xmlns 속성 추가
+                svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
+
+
+
+

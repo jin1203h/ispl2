@@ -44,6 +44,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db_session
     기존 프론트엔드 authAPI.login()과 호환
     """
     try:
+        logger.info(f"🔐 로그인 API 호출 받음: {request.email}")
         logger.debug(f"로그인 API 호출: {request.email}")
         logger.info(f"로그인 시도: {request.email}")
         

@@ -26,6 +26,7 @@ aiofiles==23.2.1
 
 # Logging & Monitoring
 structlog==23.2.0
+langfuse==3.5.1
 
 # Environment & Configuration
 python-dotenv==1.0.0
